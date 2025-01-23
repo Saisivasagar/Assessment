@@ -38,7 +38,7 @@ class ReactiveChat(param.Parameterized):
         '''                      
         self.groupchat_manager.chat_interface = instance
         if not globals.initiate_chat_task_created:
-            asyncio.create_task(self.groupchat_manager.delayed_initiate_chat(self.agents_dict[AgentKeys.TUTOR.value], self.groupchat_manager, contents))  
+            asyncio.create_task(self.groupchat_manager.delayed_initiate_chat(self.agents_dict[AgentKeys.STUDENT_GRADES_ASSESSMENT.value], self.groupchat_manager, contents))  
         else:
             if globals.input_future and not globals.input_future.done():                
                 globals.input_future.set_result(contents)                 
