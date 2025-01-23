@@ -1,4 +1,5 @@
 from typing import Dict
+import json
 from .conversable_agent import MyConversableAgent
 
 
@@ -24,6 +25,12 @@ class StudentGradesAssessmentAgent(MyConversableAgent):
             description=kwargs.pop('description', self.description),
             **kwargs
         )
+        with open("student_data.json", "r") as file:
+            self.data = json.load(file)
+    
+    
+    def handle_message(self, message):
+        return self.data
     
     def parse_input(self, user_input: str) -> Dict:
         """
