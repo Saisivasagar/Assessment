@@ -1,23 +1,38 @@
-from typing import Dict
-from .conversable_agent import MyConversableAgent
+import re
+from pydantic import BaseModel, Field
+from textwrap import dedent
+import crewai as crewai
+from datetime import datetime
+import os
+from src.Agents.base_agent import BaseAgent
 
 
-class CourseOutcomesAgent(MyConversableAgent):
-    description = """
-            CourseOutcomesAgent is responsible for mapping course outcomes to student grades.
-            """
-    
-    system_message = """
-            You are CourseOutcomesAgent, responsible for mapping course outcomes to student grades.
-            """
-
+class CourseOutcomesAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(
-            name="CourseOutcomesAgent",
-            human_input_mode="NEVER",
-            system_message=kwargs.pop('system_message', self.system_message),
-            description=kwargs.pop('description', self.description),
-            **kwargs
+            role='Course Outcomes Agent',
+            goal="Map student assignment grades to course outcomes",
+            backstory='An expert in assessing course outcomes',
+            tools=[],
+            **kwargs)
+        
+        self.previous_report = None
+
+    def assess_course_outcomes_from_assignment_grades(self):
+            
+
+        return crewai.Task(
+            description=dedent(f"""
+                Given assignment grades in the knowledge excel file and
+                   the mapping of assignments to course outcomes in knowledge folder
+
+                For each student, provide a course assessment using a 5 point Likert scale using
+                   categories: far exceeds, exceeds, meets, nearly meets, does not meet. 
+
+                Create a summary table.
+            """),
+            agent=self,
+            expected_output="A table with the course assessment for each student"
         )
     
 
