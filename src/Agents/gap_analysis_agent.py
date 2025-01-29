@@ -1,15 +1,17 @@
 from typing import Dict, List
-from .conversable_agent import MyConversableAgent
+from src.Agents.base_agent import BaseAgent
 import json
 
-class GapAnalysisAgent(MyConversableAgent):
-    description = """
-            GapAnalysisAgent is responsible for identifying knowledge gaps by comparing course content with expected outcomes and student feedback.
-            """
-
+class GapAnalysisAgent(BaseAgent):
     def __init__(self, **kwargs):
-        super().__init__(name="GapAnalysisAgent", human_input_mode="NEVER", **kwargs)
-        # Load course content and feedback data from JSON or database
+        super().__init__(
+            role='Gap Analysis Agent',
+            goal='Identify knowledge gaps by comparing course content with expected outcomes and student feedback',
+            backstory='An expert in assessing knowledge gaps in educational programs',
+            tools=[],
+            **kwargs
+        )
+        
         with open("course_content.json", "r") as file:
             self.course_content = json.load(file)
         with open("student_feedback.json", "r") as file:
@@ -23,10 +25,7 @@ class GapAnalysisAgent(MyConversableAgent):
         return knowledge_gaps
 
     def generate_improvement_reports(self, knowledge_gaps: Dict) -> Dict:
-        report = {
-            "program_level": {},
-            "course_level": {}
-        }
+        report = {"program_level": {}, "course_level": {}}
         for gap, issue in knowledge_gaps.items():
             if "program" in gap.lower():
                 report["program_level"][gap] = issue
@@ -38,17 +37,12 @@ class GapAnalysisAgent(MyConversableAgent):
         validated_gaps = {}
         for gap, issue in knowledge_gaps.items():
             feedback_support = self.student_feedback.get(gap, "No feedback available")
-            if feedback_support:
-                validated_gaps[gap] = {"issue": issue, "feedback": feedback_support}
+            validated_gaps[gap] = {"issue": issue, "feedback": feedback_support}
         return validated_gaps
 
-    def handle_message(self, message: Dict):
-        expected_outcomes = message.get("expected_outcomes", [])
-        knowledge_gaps = self.identify_knowledge_gaps(expected_outcomes)
-        improvement_reports = self.generate_improvement_reports(knowledge_gaps)
-        validated_gaps = self.validate_gaps_with_feedback(knowledge_gaps)
-        return {
-            "knowledge_gaps": knowledge_gaps,
-            "improvement_reports": improvement_reports,
-            "validated_gaps": validated_gaps
-        }
+    def pass_insights_to_recommendation_agent(self, validated_gaps: Dict):
+        recommendation_agent = self.find_agent_by_type("RecommendationAgent")
+        if not recommendation_agent:
+            return {"error": "RecommendationAgent not found. Cannot pass insights."}
+        recommendation_agent.process_insights(validated_gaps)
+        return {"status": "Insights successfully passed to RecommendationAgent."}
