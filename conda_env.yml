@@ -4,16 +4,11 @@ channels:
   - defaults
 dependencies:
   - anaconda
-  - faiss-cpu
-  - selenium
-  - yfinance
   - pip:
       - crewai
       - crewai-tools
       - langchain
       - langchain-community
-      - lxml-html-clean
       - openai
       - pydantic
-      - unstructured  
 prefix: /opt/conda/envs/adaptive
