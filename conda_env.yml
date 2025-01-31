@@ -3,21 +3,17 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - docker-py
-  - numpy
-  - openai
-  - pandas
-  - panel
-  - pip
-  - pyautogen
-  - pydantic
-  - python=3.12
-  - regex
-  - requests
-  - scikit-learn
-  - scipy
-  - transitions
+  - anaconda
+  - faiss-cpu
+  - selenium
+  - yfinance
   - pip:
-      - httplib2
-      - firebase-admin
+      - crewai
+      - crewai-tools
+      - langchain
+      - langchain-community
+      - lxml-html-clean
+      - openai
+      - pydantic
+      - unstructured  
 prefix: /opt/conda/envs/adaptive
