@@ -28,6 +28,9 @@ class CourseOutcomesAgent(BaseAgent):
 
                 For each student, provide a course assessment using a 5 point Likert scale using
                    categories: far exceeds, exceeds, meets, nearly meets, does not meet. 
+                               
+                Each student has a unique student id. If you find the same student id in different
+                    courses, it is the same student.
 
                 Create a summary table.
             """),
