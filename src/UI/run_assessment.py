@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 import os
-load_dotenv()
+load_dotenv(../)
 for key, value in os.environ.items():
     print(f"{key}: {value}")
 
@@ -37,13 +37,17 @@ class AssessmentCrew:
   def run(self):
 
     grades_source = ExcelKnowledgeSource(
-       file_paths=["comp_405_assignment_grades.xlsx"]
+       file_paths=["synthetic_student_grades.xlsx"]
     )
 
     assignment_to_course_outcomes_source = ExcelKnowledgeSource(
-       file_paths=["comp_405_assignment_to_course_outcomes_map.xlsx"]
+       file_paths=["assignment_to_course_outcomes_map.xlsx"]
     )
     course_outcomes_agent = CourseOutcomesAgent(llm=gpt_4o_high_tokens, knowledge_sources=[grades_source, assignment_to_course_outcomes_source])
+
+    course_outcomes_to_program_outcomes_source = ExcelKnowledgeSource(
+       file_paths=["course_outcomes_to_program_outcomes_mapping.xlsx"]
+    )
 
 
     agents = [ course_outcomes_agent ]
@@ -55,6 +59,7 @@ class AssessmentCrew:
     crew = crewai.Crew(
         agents=agents,
         tasks=tasks,
+        #knowledge=[grades_source, assignment_to_course_outcomes_source],
         process=crewai.Process.sequential,
         verbose=True
     )

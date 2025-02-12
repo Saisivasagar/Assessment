@@ -1,4 +1,4 @@
-name: adaptive
+name: assessment
 channels:
   - conda-forge
   - defaults
@@ -11,4 +11,4 @@ dependencies:
       - langchain-community
       - openai
       - pydantic
-prefix: /opt/conda/envs/adaptive
+prefix: /opt/conda/envs/assessment
