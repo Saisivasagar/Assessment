@@ -11,7 +11,7 @@ import langchain_openai as lang_oai
 import crewai_tools as crewai_tools
 from crewai.knowledge.source.excel_knowledge_source import ExcelKnowledgeSource
 
-
+from src.Agents.assignment_agent import AssignmentAgent
 from src.Agents.course_outcomes_agent import CourseOutcomesAgent
 from src.Helpers.pretty_print_crewai_output import display_crew_output
 
@@ -39,20 +39,22 @@ class AssessmentCrew:
     grades_source = ExcelKnowledgeSource(
        file_paths=["synthetic_student_grades.xlsx"]
     )
+    assignment_agent = AssignmentAgent(llm=gpt_4o_high_tokens, ExcelKnowledgeSource=[grades_source])
 
     assignment_to_course_outcomes_source = ExcelKnowledgeSource(
        file_paths=["assignment_to_course_outcomes_map.xlsx"]
     )
-    course_outcomes_agent = CourseOutcomesAgent(llm=gpt_4o_high_tokens, knowledge_sources=[grades_source, assignment_to_course_outcomes_source])
+    course_outcomes_agent = CourseOutcomesAgent(llm=gpt_4o_high_tokens, knowledge_sources=[assignment_to_course_outcomes_source])
 
     course_outcomes_to_program_outcomes_source = ExcelKnowledgeSource(
        file_paths=["course_outcomes_to_program_outcomes_mapping.xlsx"]
     )
 
 
-    agents = [ course_outcomes_agent ]
+    agents = [ assignment_agent, course_outcomes_agent ]
 
-    tasks = [ course_outcomes_agent.assess_course_outcomes_from_assignment_grades() ]
+    tasks = [   assignment_agent.get_student_assignment_grades(),
+                course_outcomes_agent.assess_course_outcomes_from_assignment_grades() ]
     
 
     # Run initial tasks

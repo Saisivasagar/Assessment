@@ -23,19 +23,25 @@ class CourseOutcomesAgent(BaseAgent):
 
         return crewai.Task(
             description=dedent(f"""
-                Given assignment grades in the knowledge excel file and
-                   the mapping of assignments to course outcomes in knowledge folder
-
-                For each student, provide a course assessment using a 5 point Likert scale using
-                   categories: far exceeds, exceeds, meets, nearly meets, does not meet. 
+                You have assignment to course outcomes mappings excel file in your context knowledge.
                                
-                Each student has a unique student id. If you find the same student id in different
-                    courses, it is the same student. Limit the output to only 5 unique student IDs.
+                The file is organized as follows:
+                    1. There are sheets where the name of the sheet is the name of the course
+                    2. The first column contains the course outcomes
+                    3. All columns from the second column contain the names of the assignments used for assessment
+                               
+                As Assignment Agent can provide you with the student scores for each course and assignment
 
-                Create a summary table displaying results only for 5 students.
+                For each student, provide a course outcomes assessment using a 5 point Likert scale using
+                   categories: does not meet, nearly meets, meets, exceeds, far exceeds. 
+
+                For each course, assess the course outcomes for each student. 
+                               
+                Create a summary table displaying the Likert scale results for each course. Make sure to list the
+                        course name (i.e. the Sheet Name)
             """),
             agent=self,
-            expected_output="A table with the course assessment for 5 unique students"
+            expected_output="A table with the course outcomes assessment for each student"
         )
     
 
