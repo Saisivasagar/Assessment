@@ -23,25 +23,27 @@ class CourseOutcomesAgent(BaseAgent):
 
         return crewai.Task(
             description=dedent(f"""
-                You have assignment to course outcomes mappings excel file in your context knowledge.
+                You have two files in your knowledge context: synthetic_student_grades.xlsx and assignment_to_course_outcomes_map.xlsx        
+
+                In both files, the courses are organized in sheets with the course number being the first part of the sheet name.
+                In the assignment_to_course_outcomes.xlsx file, each sheet is appended with the course name.
                                
-                The file is organized as follows:
-                    1. There are sheets where the name of the sheet is the name of the course
-                    2. The first column contains the course outcomes
+                The synthetic_student_grades.xlsx excel file is organized as follows:
+                    1. Each sheet has a header row
+                    2. Students are listed in rows with a unique ID per student
+                    3. Assignment names and grades are in columns 
+                                 
+                The assignment_to_course_outcomes_map.xlsx file is organized as follows:
+                    2. The first column of each sheet contains the course outcomes
                     3. All columns from the second column contain the names of the assignments used for assessment
                                
-                As Assignment Agent can provide you with the student scores for each course and assignment
-
-                For each student, provide a course outcomes assessment using a 5 point Likert scale using
-                   categories: does not meet, nearly meets, meets, exceeds, far exceeds. 
-
-                For each course, assess the course outcomes for each student. 
+                For each student, and for each course, provide a course outcomes assessment using a 5 point Likert scale.
                                
-                Create a summary table displaying the Likert scale results for each course. Make sure to list the
+                Create a summary table displaying the Likert scale results for each course and student. Make sure to list the
                         course name (i.e. the Sheet Name)
             """),
             agent=self,
-            expected_output="A table with the course outcomes assessment for each student"
+            expected_output="A table with the course outcomes assessment for each student for each course."
         )
     
 

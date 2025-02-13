@@ -42,7 +42,7 @@ class AssessmentCrew:
     assignment_agent = AssignmentAgent(llm=gpt_4o_high_tokens, ExcelKnowledgeSource=[grades_source])
 
     assignment_to_course_outcomes_source = ExcelKnowledgeSource(
-       file_paths=["assignment_to_course_outcomes_map.xlsx"]
+       file_paths=["synthetic_student_grades.xlsx", "assignment_to_course_outcomes_map.xlsx"]
     )
     course_outcomes_agent = CourseOutcomesAgent(llm=gpt_4o_high_tokens, knowledge_sources=[assignment_to_course_outcomes_source])
 
@@ -51,10 +51,9 @@ class AssessmentCrew:
     )
 
 
-    agents = [ assignment_agent, course_outcomes_agent ]
+    agents = [ course_outcomes_agent ]
 
-    tasks = [   assignment_agent.get_student_assignment_grades(),
-                course_outcomes_agent.assess_course_outcomes_from_assignment_grades() ]
+    tasks = [course_outcomes_agent.assess_course_outcomes_from_assignment_grades() ]
     
 
     # Run initial tasks
