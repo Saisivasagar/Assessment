@@ -30,12 +30,12 @@ class CourseOutcomesAgent(BaseAgent):
                    categories: far exceeds, exceeds, meets, nearly meets, does not meet. 
                                
                 Each student has a unique student id. If you find the same student id in different
-                    courses, it is the same student.
+                    courses, it is the same student. Limit the output to only 5 unique student IDs.
 
-                Create a summary table.
+                Create a summary table displaying results only for 5 students.
             """),
             agent=self,
-            expected_output="A table with the course assessment for each student"
+            expected_output="A table with the course assessment for 5 unique students"
         )
     
 
