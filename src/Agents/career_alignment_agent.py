@@ -49,3 +49,4 @@ class CareerAlignmentAgent(BaseAgent):
         suggested_courses = recommendations.get(career_goals.get("career"), ["General Upskilling Courses"])
 
         return {"suggested_courses": suggested_courses}
+ 

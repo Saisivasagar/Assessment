@@ -23,16 +23,47 @@ class CourseOutcomesAgent(BaseAgent):
 
         return crewai.Task(
             description=dedent(f"""
-                Given assignment grades in the knowledge excel file and
-                   the mapping of assignments to course outcomes in knowledge folder
-
-                For each student, provide a course assessment using a 5 point Likert scale using
-                   categories: far exceeds, exceeds, meets, nearly meets, does not meet. 
-
-                Create a summary table.
+                               
+                  You have access to two files:
+                1. synthetic_student_grades.xlsx– Contains student grades for various assignments.
+                2. assignment_to_course_outcomes_map.xlsx– Maps assignments to course outcomes.
+                
+                File Structure:
+                - Both files are structured with multiple sheets, where the sheet name begins with the course number.
+                - In assignment_to_course_outcomes_map.xlsx, each sheet is appended with the course name.
+                
+                synthetic_student_grades.xlsx Structure:
+                - Each sheet has a header row.
+                - Students are listed in rows with a unique student ID.
+                - Assignment names and corresponding grades are in columns.
+                
+                assignment_to_course_outcomes_map.xlsx Structure:
+                - Each sheet represents a specific course.
+                - The first column lists course outcomes.
+                - All subsequent columns contain assignment names linked to each outcome.
+                
+                Courses Covered:
+                -Coding Adventures I
+                -Coding Adventures II
+                -Computer Architecture
+                -Computer Science Fundamentals
+                -Networking
+                -Algorithms
+                -Database Management Systems
+                -Object-Oriented Java Programming
+                -Software Engineering
+                -Operating Systems
+                -Capstone Project
+                
+                Task:
+                - For each student and each course, assess the course outcomes based on assignment grades.
+                - Use a 5-point Likert scale to evaluate each course outcome.
+                - Generate a summary table displaying Likert scale results for each course and student.
+                - Ensure the course name (Sheet Name) is clearly listed in the final report.
+                - Limit the student IDs to five for the assessment output.
             """),
             agent=self,
-            expected_output="A table with the course assessment for each student"
+            expected_output="A table with the course outcomes assessment for each student for each course."
         )
     
 
