@@ -23,24 +23,44 @@ class CourseOutcomesAgent(BaseAgent):
 
         return crewai.Task(
             description=dedent(f"""
-                You have two files in your knowledge context: synthetic_student_grades.xlsx and assignment_to_course_outcomes_map.xlsx        
-
-                In both files, the courses are organized in sheets with the course number being the first part of the sheet name.
-                In the assignment_to_course_outcomes.xlsx file, each sheet is appended with the course name.
                                
-                The synthetic_student_grades.xlsx excel file is organized as follows:
-                    1. Each sheet has a header row
-                    2. Students are listed in rows with a unique ID per student
-                    3. Assignment names and grades are in columns 
-                                 
-                The assignment_to_course_outcomes_map.xlsx file is organized as follows:
-                    2. The first column of each sheet contains the course outcomes
-                    3. All columns from the second column contain the names of the assignments used for assessment
-                               
-                For each student, and for each course, provide a course outcomes assessment using a 5 point Likert scale.
-                               
-                Create a summary table displaying the Likert scale results for each course and student. Make sure to list the
-                        course name (i.e. the Sheet Name)
+                  You have access to two files:
+                1. synthetic_student_grades.xlsx– Contains student grades for various assignments.
+                2. assignment_to_course_outcomes_map.xlsx– Maps assignments to course outcomes.
+                
+                File Structure:
+                - Both files are structured with multiple sheets, where the sheet name begins with the course number.
+                - In assignment_to_course_outcomes_map.xlsx, each sheet is appended with the course name.
+                
+                synthetic_student_grades.xlsx Structure:
+                - Each sheet has a header row.
+                - Students are listed in rows with a unique student ID.
+                - Assignment names and corresponding grades are in columns.
+                
+                assignment_to_course_outcomes_map.xlsx Structure:
+                - Each sheet represents a specific course.
+                - The first column lists course outcomes.
+                - All subsequent columns contain assignment names linked to each outcome.
+                
+                Courses Covered:
+                -Coding Adventures I
+                -Coding Adventures II
+                -Computer Architecture
+                -Computer Science Fundamentals
+                -Networking
+                -Algorithms
+                -Database Management Systems
+                -Object-Oriented Java Programming
+                -Software Engineering
+                -Operating Systems
+                -Capstone Project
+                
+                Task:
+                - For each student and each course, assess the course outcomes based on assignment grades.
+                - Use a 5-point Likert scale to evaluate each course outcome.
+                - Generate a summary table displaying Likert scale results for each course and student.
+                - Ensure the course name (Sheet Name) is clearly listed in the final report.
+                - Limit the student IDs to five for the assessment output.
             """),
             agent=self,
             expected_output="A table with the course outcomes assessment for each student for each course."
