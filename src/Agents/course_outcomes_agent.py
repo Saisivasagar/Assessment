@@ -24,15 +24,15 @@ class CourseOutcomesAgent(BaseAgent):
         return crewai.Task(
             description=dedent(f"""
                                
-                  You have access to two files:
-                1. synthetic_student_grades.xlsx– Contains student grades for various assignments.
+                You have access to two files:
+                1. Student_synthetic_data_grades.xlsx– Contains student grades for various assignments.
                 2. assignment_to_course_outcomes_map.xlsx– Maps assignments to course outcomes.
                 
                 File Structure:
                 - Both files are structured with multiple sheets, where the sheet name begins with the course number.
                 - In assignment_to_course_outcomes_map.xlsx, each sheet is appended with the course name.
                 
-                synthetic_student_grades.xlsx Structure:
+                Student_synthetic_data_grades.xlsx Structure:
                 - Each sheet has a header row.
                 - Students are listed in rows with a unique student ID.
                 - Assignment names and corresponding grades are in columns.
@@ -42,7 +42,7 @@ class CourseOutcomesAgent(BaseAgent):
                 - The first column lists course outcomes.
                 - All subsequent columns contain assignment names linked to each outcome.
                 
-                Courses Covered:
+               Courses Covered:
                 -Coding Adventures I
                 -Coding Adventures II
                 -Computer Architecture
