@@ -48,18 +48,18 @@ class AssessmentCrew:
     comp_431 = ExcelKnowledgeSource(file_paths=["COMP-431.xlsx"])
     comp_450 = ExcelKnowledgeSource(file_paths=["COMP-450.xlsx"])
     grades_source = ExcelKnowledgeSource(
-       file_paths=["Student_synthetic_data_grades.xlsx"]
+       file_paths=["data/Student_synthetic_data_grades.xlsx"]
     )
 
     assignment_agent = AssignmentAgent(llm=gpt_4o_high_tokens, Knowledge_sources=[grades_source, comp_101, comp_103, comp_245, comp_301, comp_308, comp_315, comp_335, comp_385, comp_405, comp_431, comp_450 ])
 
     assignment_to_course_outcomes_source = ExcelKnowledgeSource(
-       file_paths=["Student_synthetic_data_grades.xlsx", "assignment_to_course_outcomes_map.xlsx", "COMP-101.xlsx", "COMP-103.xlsx", "COMP-245.xlsx", "COMP-301.xlsx", "COMP-308.xlsx", "COMP-315.xlsx", "COMP-335.xlsx", "COMP-385.xlsx", "COMP-405.xlsx", "COMP-431.xlsx", "COMP-450.xlsx"]
+       file_paths=["data/Student_synthetic_data_grades.xlsx", "data/assignment_to_course_outcomes_map.xlsx", "COMP-101.xlsx", "COMP-103.xlsx", "COMP-245.xlsx", "COMP-301.xlsx", "COMP-308.xlsx", "COMP-315.xlsx", "COMP-335.xlsx", "COMP-385.xlsx", "COMP-405.xlsx", "COMP-431.xlsx", "COMP-450.xlsx"]
     )
     course_outcomes_agent = CourseOutcomesAgent(llm=gpt_4o_high_tokens, knowledge_sources=[assignment_to_course_outcomes_source, comp_101, comp_103, comp_245])
 
     course_outcomes_to_program_outcomes_source = ExcelKnowledgeSource(
-       file_paths=["course_outcomes_to_program_outcomes_mapping.xlsx"]
+       file_paths=["data/course_outcomes_to_program_outcomes_mapping.xlsx"]
     )
 
 
