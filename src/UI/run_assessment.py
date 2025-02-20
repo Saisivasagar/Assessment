@@ -9,7 +9,7 @@ import logging
 import crewai as crewai
 import langchain_openai as lang_oai
 import crewai_tools as crewai_tools
-from crewai.knowledge.source.excel_knowledge_source import ExcelKnowledgeSource
+from crewai.knowledge.source.excel_knowledge_source import ExcelKnowledgeSource, CrewDoclingSource
 
 from src.Agents.assignment_agent import AssignmentAgent
 from src.Agents.course_outcomes_agent import CourseOutcomesAgent
