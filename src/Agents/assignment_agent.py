@@ -26,11 +26,18 @@ class AssignmentAgent(BaseAgent):
                 You have an excel file with students and assignment grades in your knowledge context. 
 
                 The excel file is organized as follows:
-                    1. Each sheet is for a unique course. 
-                    2. The sheet name identifies the course
-                    3. Each sheet has a header row
-                    4. Students are listed in rows with a unique ID per student
-                    5. Assignment names and grades are in columns 
+                    1. Each sheet is for a unique outcome. 
+                    2. The sheet name identifies the outcome.
+                    3. Each sheet has a header row.
+                    4. Students are listed in rows with a unique ID per student.
+                    5. Assignment names and grades are in columns.
+                 Task:
+                - Extract student assignment grades accurately.
+                - Map each student's assignment scores to the relevant course outcome.
+                - Provide grades to any Crew member that requests them.
+                - Ensure the extracted data is structured for easy assessment of student capabilities per outcome.
+                - Limit the student IDs to five for the assessment output.
+ 
                                                
                 When requested, provide student grades to any Crew member that requests them.
                 
