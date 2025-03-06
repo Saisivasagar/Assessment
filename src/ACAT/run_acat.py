@@ -62,30 +62,30 @@ def main():
 
             print("Final Outcomes:\n", final_outcomes)
 
-        # Extract the unique list of all required assignments for this section
-        required_columns = set(assignment for criteria in final_outcomes.values() for assignment in criteria)
+            # Extract the unique list of all required assignments for this section
+            required_columns = set(assignment for criteria in final_outcomes.values() for assignment in criteria)
 
-        student_data = read_grades(section_data['grades_file'], required_columns=required_columns)
+            student_data = read_grades(section_data['grades_file'], required_columns=required_columns)
 
-        acat = ACAT(course_name, semester, section, final_outcomes, student_data)
-        student_outcomes = acat.compute_course_outcomes()
-        acat.summarize_course_outcomes(student_outcomes)
+            acat = ACAT(course_name, semester, section, final_outcomes, student_data)
+            student_outcomes = acat.compute_course_outcomes()
+            acat.summarize_course_outcomes(student_outcomes)
 
-        excel_output = os.path.join(
-            config['output']['excel_folder'],
-            f"{course_name}_{semester}_{section}_outcomes.xlsx"
-        )
+            excel_output = os.path.join(
+                config['output']['excel_folder'],
+                f"{course_name}_{semester}_{section}_outcomes.xlsx"
+            )
 
-        db_output = os.path.join(
-            config['output']['database_folder'],
-            f"{course_name}_{semester}_{section}_outcomes.db"
-        )
+            db_output = os.path.join(
+                config['output']['database_folder'],
+                f"{course_name}_{semester}_{section}_outcomes.db"
+            )
 
-        os.makedirs(config['output']['excel_folder'], exist_ok=True)
-        os.makedirs(config['output']['database_folder'], exist_ok=True)
+            os.makedirs(config['output']['excel_folder'], exist_ok=True)
+            os.makedirs(config['output']['database_folder'], exist_ok=True)
 
-        acat.save_to_excel(student_outcomes, excel_output)
-        acat.save_to_sqlite(db_output, student_outcomes)
+            acat.save_to_excel(student_outcomes, excel_output)
+            acat.save_to_sqlite(db_output, student_outcomes)
 
 
 if __name__ == "__main__":
