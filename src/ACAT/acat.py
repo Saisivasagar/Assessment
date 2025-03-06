@@ -35,13 +35,13 @@ class ACAT:
         else:
             return 1
 
-    def summarize_outcomes(self, student_outcomes):
+    def summarize_course_outcomes(self, student_outcomes):
         summary = {}
         for outcome in self.outcomes:
             outcome_scores = [scores[outcome] for scores in student_outcomes.values()]
             avg_score = sum(outcome_scores) / len(outcome_scores)
             summary[outcome] = avg_score
-            print(f"Outcome: {outcome}, Class Likert Average: {avg_score:.2f}")
+            print(f"Course Outcome: {outcome}, Class Likert Average: {avg_score:.2f}")
         return summary
 
     def save_to_excel(self, student_outcomes, filename):
@@ -83,4 +83,21 @@ class ACAT:
         return institution_outcomes
 
 
+    def read_outcomes(outcomes_file):
+        outcomes_df = pd.read_excel(outcomes_file)
+        outcomes = {}
+        for _, row in outcomes_df.iterrows():
+            outcome = row.iloc[0]
+            criteria = [col for col in outcomes_df.columns[1:] if pd.notnull(row[col])]
+            outcomes[outcome] = criteria
+        return outcomes
 
+    def read_assignments(assignments_file):
+        assignments_df = pd.read_excel(assignments_file)
+        return assignments_df.set_index('Outcome')['Assignment'].to_dict()
+
+    def read_grades(grades_file, required_columns):
+        grades_df = pd.read_csv(grades_file)
+        relevant_columns = ['SIS User ID'] + [col for col in required_columns if col in grades_df.columns]
+        grades_df = grades_df[relevant_columns].set_index('SIS User ID')
+        return grades_df.to_dict(orient='index')
