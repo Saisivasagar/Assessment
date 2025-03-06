@@ -1,7 +1,5 @@
 import pandas as pd
 import sqlite3
-import json
-import os
 
 class ACAT:
     def __init__(self, course_name, semester, section, outcomes, student_data):
@@ -10,7 +8,7 @@ class ACAT:
         self.section = section
         self.outcomes = outcomes
         self.student_data = student_data
-
+    
     def compute_course_outcomes(self):
         student_outcomes = {}
         for student_id, grades in self.student_data.items():
@@ -83,21 +81,6 @@ class ACAT:
         return institution_outcomes
 
 
-    def read_outcomes(outcomes_file):
-        outcomes_df = pd.read_excel(outcomes_file)
-        outcomes = {}
-        for _, row in outcomes_df.iterrows():
-            outcome = row.iloc[0]
-            criteria = [col for col in outcomes_df.columns[1:] if pd.notnull(row[col])]
-            outcomes[outcome] = criteria
-        return outcomes
 
-    def read_assignments(assignments_file):
-        assignments_df = pd.read_excel(assignments_file)
-        return assignments_df.set_index('Outcome')['Assignment'].to_dict()
 
-    def read_grades(grades_file, required_columns):
-        grades_df = pd.read_csv(grades_file)
-        relevant_columns = ['SIS User ID'] + [col for col in required_columns if col in grades_df.columns]
-        grades_df = grades_df[relevant_columns].set_index('SIS User ID')
-        return grades_df.to_dict(orient='index')
+
