@@ -8,12 +8,12 @@
         {
           "section": "01",
           "assignments_file": "assignments/FA24/COMP-101_FA24_01_assignments.xlsx",
-          "grades_file": "grades/FA24/COMP-101_FA24_01_course_data.csv"
+          "grades_file": "grades/FA24/COMP-101_FA24_01_course_data.xlsx"
         },
         {
           "section": "02",
           "assignments_file": "assignments/FA24/COMP-101_FA24_02_assignments.xlsx",
-          "grades_file": "grades/FA24/COMP-101_FA24_02_course_data.csv"
+          "grades_file": "grades/FA24/COMP-101_FA24_02_course_data.xlsx"
         }
       ]
     }
