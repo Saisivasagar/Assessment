@@ -9,7 +9,8 @@ import logging
 import crewai as crewai
 import langchain_openai as lang_oai
 import crewai_tools as crewai_tools
-from crewai.knowledge.source.excel_knowledge_source import ExcelKnowledgeSource, CrewDoclingSource
+from crewai.knowledge.source.excel_knowledge_source import ExcelKnowledgeSource
+#from crewai.knowledge.source.crew_docling_source import CrewDoclingSource
 
 from src.Agents.assignment_agent import AssignmentAgent
 from src.Agents.course_outcomes_agent import CourseOutcomesAgent
@@ -23,6 +24,9 @@ if not logger.hasHandlers():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
+    
+
+
 
 gpt_4o_high_tokens = lang_oai.ChatOpenAI(
     model_name="gpt-4o",
@@ -37,30 +41,30 @@ class AssessmentCrew:
   def run(self):
 
     comp_101 = ExcelKnowledgeSource(file_paths=["COMP-101.xlsx"])
-    comp_103 = ExcelKnowledgeSource(file_paths=["COMP-103.xlsx"])
-    comp_245 = ExcelKnowledgeSource(file_paths=["COMP-245.xlsx"])
-    comp_301 = ExcelKnowledgeSource(file_paths=["COMP-301.xlsx"])
-    comp_308 = ExcelKnowledgeSource(file_paths=["COMP-308.xlsx"])
-    comp_315 = ExcelKnowledgeSource(file_paths=["COMP-315.xlsx"])
-    comp_335 = ExcelKnowledgeSource(file_paths=["COMP-335.xlsx"])
-    comp_385 = ExcelKnowledgeSource(file_paths=["COMP-385.xlsx"])
-    comp_405 = ExcelKnowledgeSource(file_paths=["COMP-405.xlsx"])
-    comp_431 = ExcelKnowledgeSource(file_paths=["COMP-431.xlsx"])
-    comp_450 = ExcelKnowledgeSource(file_paths=["COMP-450.xlsx"])
+    #comp_103 = ExcelKnowledgeSource(file_paths=["COMP-103.xlsx"])
+    #comp_245 = ExcelKnowledgeSource(file_paths=["COMP-245.xlsx"])
+    #comp_301 = ExcelKnowledgeSource(file_paths=["COMP-301.xlsx"])
+    #comp_308 = ExcelKnowledgeSource(file_paths=["COMP-308.xlsx"])
+    #comp_315 = ExcelKnowledgeSource(file_paths=["COMP-315.xlsx"])
+    #comp_335 = ExcelKnowledgeSource(file_paths=["COMP-335.xlsx"])
+    #comp_385 = ExcelKnowledgeSource(file_paths=["COMP-385.xlsx"])
+    #comp_405 = ExcelKnowledgeSource(file_paths=["COMP-405.xlsx"])
+    #comp_431 = ExcelKnowledgeSource(file_paths=["COMP-431.xlsx"])
+    #comp_450 = ExcelKnowledgeSource(file_paths=["COMP-450.xlsx"])
+    #comp_552 = ExcelKnowledgeSource(file_paths=["COMP_552_MAPPING.xlsx"])
     grades_source = ExcelKnowledgeSource(
-       file_paths=["Student_synthetic_data_grades.xlsx"]
+       file_paths=[ "grades_101.xlsx"]
     )
 
-    assignment_agent = AssignmentAgent(llm=gpt_4o_high_tokens, Knowledge_sources=[grades_source, comp_101, comp_103, comp_245, comp_301, comp_308, comp_315, comp_335, comp_385, comp_405, comp_431, comp_450 ])
+    assignment_agent = AssignmentAgent(llm=gpt_4o_high_tokens, knowledge_sources=[grades_source])
 
     assignment_to_course_outcomes_source = ExcelKnowledgeSource(
-       file_paths=["Student_synthetic_data_grades.xlsx", "assignment_to_course_outcomes_map.xlsx", "COMP-101.xlsx", "COMP-103.xlsx", "COMP-245.xlsx", "COMP-301.xlsx", "COMP-308.xlsx", "COMP-315.xlsx", "COMP-335.xlsx", "COMP-385.xlsx", "COMP-405.xlsx", "COMP-431.xlsx", "COMP-450.xlsx"]
+       file_paths=[ "grades_101.xlsx", "COMP-101.xlsx"]
     )
-    course_outcomes_agent = CourseOutcomesAgent(llm=gpt_4o_high_tokens, knowledge_sources=[assignment_to_course_outcomes_source, comp_101, comp_103, comp_245])
+    course_outcomes_agent = CourseOutcomesAgent(llm=gpt_4o_high_tokens, knowledge_sources=[comp_101]
+    )
 
-    course_outcomes_to_program_outcomes_source = ExcelKnowledgeSource(
-       file_paths=["course_outcomes_to_program_outcomes_mapping.xlsx"]
-    )
+    #course_outcomes_to_program_outcomes_source = ExcelKnowledgeSource( file_paths=["course_outcomes_to_program_outcomes_mapping.xlsx"])
 
 
 
