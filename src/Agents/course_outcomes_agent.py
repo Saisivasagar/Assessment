@@ -53,7 +53,7 @@ class CourseOutcomesAgent(BaseAgent):
                 -    Include five student IDs in the assessment output.
                 -    Limit the analysis to four course outcomes for Course 101.
                 -    Ensure the output table is structured with student IDs as rows and course outcomes as columns, with each cell containing the correct average grade for that outcome.
-                -    The outcome column headings should be simply Outcome:1, Outcome:2, Outcome:3, and Outcome:4. 
+                
                                  
                 Expected Output:
 
