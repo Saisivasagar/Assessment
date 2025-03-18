@@ -40,7 +40,7 @@ class AssessmentCrew:
 
   def run(self):
 
-    #comp_101 = ExcelKnowledgeSource(file_paths=["COMP-101.xlsx"])
+    comp_101 = ExcelKnowledgeSource(file_paths=["COMP-101.xlsx"])
     #comp_103 = ExcelKnowledgeSource(file_paths=["COMP-103.xlsx"])
     #comp_245 = ExcelKnowledgeSource(file_paths=["COMP-245.xlsx"])
     #comp_301 = ExcelKnowledgeSource(file_paths=["COMP-301.xlsx"])
@@ -51,17 +51,18 @@ class AssessmentCrew:
     #comp_405 = ExcelKnowledgeSource(file_paths=["COMP-405.xlsx"])
     #comp_431 = ExcelKnowledgeSource(file_paths=["COMP-431.xlsx"])
     #comp_450 = ExcelKnowledgeSource(file_paths=["COMP-450.xlsx"])
-    comp_552 = ExcelKnowledgeSource(file_paths=["COMP_552_MAPPING.xlsx"])
+    #comp_552 = ExcelKnowledgeSource(file_paths=["COMP_552_MAPPING.xlsx"])
     grades_source = ExcelKnowledgeSource(
-       file_paths=["student_synthetic_grades_552.xlsx"]
+       file_paths=[ "grades_101.xlsx"]
     )
 
     assignment_agent = AssignmentAgent(llm=gpt_4o_high_tokens, knowledge_sources=[grades_source])
 
     assignment_to_course_outcomes_source = ExcelKnowledgeSource(
-       file_paths=["student_synthetic_grades_552.xlsx", "COMP_552_MAPPING.xlsx", "Assignment_Specification_552.xlsx"]
+       file_paths=[ "grades_101.xlsx", "COMP-101.xlsx"]
     )
-    course_outcomes_agent = CourseOutcomesAgent(llm=gpt_4o_high_tokens, knowledge_sources=[ comp_552])
+    course_outcomes_agent = CourseOutcomesAgent(llm=gpt_4o_high_tokens, knowledge_sources=[comp_101]
+    )
 
     #course_outcomes_to_program_outcomes_source = ExcelKnowledgeSource( file_paths=["course_outcomes_to_program_outcomes_mapping.xlsx"])
 
