@@ -33,6 +33,23 @@ gpt_4o_high_tokens = lang_oai.ChatOpenAI(
     temperature=0.0,
     max_tokens=1500
 )
+class CourseOutcomesCrew:
+    run()
+    {
+        result = crew101 = { 
+            [comp_101_agent = { ExcelKnowledgeSource(file_paths=["COMP-101.xlsx"])}]
+            
+            }
+           
+        result_101 = crew101.kickoff()
+        result = crew103 = { 
+            [comp_103_agent = { ExcelKnowledgeSource(file_paths=["COMP-103.xlsx"])}]
+            
+            }
+           
+        result_103 = crew103.kickoff()
+    }
+main()
 
 class AssessmentCrew:
   def __init__(self):
