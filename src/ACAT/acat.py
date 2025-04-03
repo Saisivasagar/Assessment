@@ -47,6 +47,6 @@ class ACAT:
     def save_to_sqlite(self, db_name, student_outcomes):
         conn = sqlite3.connect(db_name)
         df = pd.DataFrame.from_dict(student_outcomes, orient='index')
-        table_name = f"{self.course_name}_{self.semester}_{self.section}".replace("-", "_")
+        table_name = f"{self.course_name}".replace("-", "_")
         df.to_sql(table_name, con=conn, if_exists='replace', index_label='SIS_User_ID')
         conn.close()
