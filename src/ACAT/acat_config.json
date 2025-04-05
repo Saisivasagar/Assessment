@@ -1,0 +1,15 @@
+{
+  "courses": [
+    {
+      "course_name": "COMP-101",
+      "outcomes_file": "course_outcomes/COMP-101_course_outcomes.xlsx",
+      "assignments_file": "assignments/COMP-101.xlsx",
+      "grades_file": "grades/grades_101.xlsx"
+      
+    }
+  ],
+  "output": {
+    "excel_folder": "assessment_results",
+    "database_folder": "assessment_databases"
+  }
+}
