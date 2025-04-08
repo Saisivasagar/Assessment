@@ -11,7 +11,21 @@
           "grades_file": "grades/FA24/COMP-101_FA24_01_course_data.xlsx"
         }
     ]
+    },
+
+    {
+      "course_name": "COMP-103",
+      "semester": "FA24",
+      "outcomes_file": "course_outcomes/FA24/COMP-103_FA24_course_outcomes.xlsx",
+      "sections": [
+        {
+          "section": "01",
+          "assignments_file": "assignments/FA24/COMP-103_FA24_01_assignments.xlsx",
+          "grades_file": "grades/FA24/COMP-103_FA24_01_course_data.xlsx"
+        }
+    ]
     }
+    
   ],
   "output": {
     "excel_folder": "assessment_results",
