@@ -12,11 +12,14 @@ class ACAT:
     def compute_course_outcomes(self):
         student_outcomes = {}
         for student_id, grades in self.student_data.items():
+            print("\n\nstudent_id: ", student_id)
+            print("grades\n", grades)
             student_outcomes[student_id] = {}
             for outcome, criteria in self.outcomes.items():
                 outcome_scores = [grades[criterion] for criterion in criteria if criterion in grades]
                 avg_score = sum(outcome_scores) / len(outcome_scores) if outcome_scores else 0
                 likert_score = self.to_likert(avg_score)
+                print("\noutcome: ", outcome)
                 student_outcomes[student_id][outcome] = likert_score
         return student_outcomes
 
@@ -56,6 +59,8 @@ class ACAT:
     def compute_program_outcomes(self, program_config, course_results):
         program_outcomes = {}
         for program, outcomes in program_config.items():
+            print("\n\nProgram: ", program)
+            print("\nOutcomes\n", outcomes)
             program_outcomes[program] = {}
             for po, course_outcome_ids in outcomes.items():
                 combined_scores = []
