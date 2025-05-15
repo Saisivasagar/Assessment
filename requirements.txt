@@ -1,0 +1,7 @@
+      crewai
+      crewai-tools
+      dotenv
+      langchain
+      langchain-community
+      openai
+      pydantic
