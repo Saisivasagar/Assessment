@@ -10,9 +10,8 @@
           "assignments_file": "assignments/FA24/COMP-101_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-101_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
-
     {
       "course_name": "COMP-103",
       "semester": "FA24",
@@ -23,9 +22,8 @@
           "assignments_file": "assignments/FA24/COMP-103_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-103_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
-
     {
       "course_name": "COMP-245",
       "semester": "FA24",
@@ -36,7 +34,7 @@
           "assignments_file": "assignments/FA24/COMP-245_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-245_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
     {
       "course_name": "COMP-301",
@@ -48,7 +46,7 @@
           "assignments_file": "assignments/FA24/COMP-301_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-301_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
     {
       "course_name": "COMP-308",
@@ -60,7 +58,7 @@
           "assignments_file": "assignments/FA24/COMP-308_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-308_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
     {
       "course_name": "COMP-315",
@@ -72,7 +70,7 @@
           "assignments_file": "assignments/FA24/COMP-315_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-315_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
     {
       "course_name": "COMP-335",
@@ -84,7 +82,7 @@
           "assignments_file": "assignments/FA24/COMP-335_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-335_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
     {
       "course_name": "COMP-385",
@@ -96,9 +94,8 @@
           "assignments_file": "assignments/FA24/COMP-385_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-385_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
-
     {
       "course_name": "COMP-405",
       "semester": "FA24",
@@ -109,10 +106,8 @@
           "assignments_file": "assignments/FA24/COMP-405_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-405_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
-
-
     {
       "course_name": "COMP-431",
       "semester": "FA24",
@@ -123,9 +118,8 @@
           "assignments_file": "assignments/FA24/COMP-431_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-431_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     },
-
     {
       "course_name": "COMP-450",
       "semester": "FA24",
@@ -136,11 +130,13 @@
           "assignments_file": "assignments/FA24/COMP-450_FA24_01_assignments.xlsx",
           "grades_file": "grades/FA24/COMP-450_FA24_01_course_data.xlsx"
         }
-    ]
+      ]
     }
   ],
   "output": {
     "excel_folder": "assessment_results",
-    "database_folder": "assessment_databases"
+    "database_folder": "assessment_databases",
+    "co_po_mapping_file": "mappings_output/CO_to_PO_Mapping.xlsx",
+    "po_io_mapping_file": "mappings_output/PO_to_IO_Mapping.xlsx"
   }
 }
