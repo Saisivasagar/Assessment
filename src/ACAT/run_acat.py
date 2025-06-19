@@ -125,6 +125,193 @@ def generate_mappings():
     except Exception as e:
         print(f"Error writing mapping files: {e}")
 
+def compute_program_outcomes(config, course_name, semester, section, co_excel_file, output_folder):
+    """
+    Compute Program Outcome (PO) scores based on CO-to-PO mappings and CO scores.
+    Save results to an Excel file.
+    """
+    # Step 1: Read CO Excel file
+    co_df = safe_read_excel(co_excel_file)
+    if co_df is None:
+        print(f"Error: Could not read CO Excel file {co_excel_file}")
+        return
+
+    # Ensure expected columns are present
+    if 'SIS User ID' not in co_df.columns or 'Course Outcome' not in co_df.columns:
+        print(f"Error: Missing required columns in {co_excel_file}")
+        return
+
+    # Extract student-level CO scores and class-level averages
+    student_co_scores = co_df.set_index('SIS User ID').filter(like='CO').dropna()
+    class_co_avg = student_co_scores.mean().to_dict()  # Class-level CO averages
+
+    # Step 2: Read CO-to-PO mapping from config
+    co_po_mapping_file = config.get('output', {}).get('co_po_mapping_file')
+    if not co_po_mapping_file:
+        print("Error: CO-to-PO mapping file not specified in config")
+        return
+    co_po_df = safe_read_excel(co_po_mapping_file)
+    if co_po_df is None:
+        print(f"Error: Could not read CO-to-PO mapping file {co_po_mapping_file}")
+        return
+
+    # Validate CO-to-PO mapping
+    if 'Course Outcome' not in co_po_df.columns:
+        print(f"Error: 'Course Outcome' column missing in {co_po_mapping_file}")
+        return
+    po_columns = [col for col in co_po_df.columns if col.startswith('PO')]
+    if not po_columns:
+        print(f"Error: No PO columns found in {co_po_mapping_file}")
+        return
+
+    # Filter mappings for the current course
+    course_co_prefix = f"{course_name}: "
+    co_po_df = co_po_df[co_po_df['Course Outcome'].str.startswith(course_co_prefix)]
+    if co_po_df.empty:
+        print(f"Warning: No CO-to-PO mappings found for course {course_name}")
+        return
+
+    # Step 3: Compute PO scores
+    # Initialize dictionaries for student-level and class-level PO scores
+    student_po_scores = {sid: {po: 0.0 for po in po_columns} for sid in student_co_scores.index}
+    class_po_scores = {po: 0.0 for po in po_columns}
+    co_counts = {po: 0 for po in po_columns}  # Track number of COs contributing to each PO
+
+    for _, row in co_po_df.iterrows():
+        co = row['Course Outcome'].replace(course_co_prefix, '')
+        if co not in student_co_scores.columns:
+            print(f"Warning: CO {co} not found in CO scores for {course_name}")
+            continue
+        for po in po_columns:
+            weight = row[po]
+            if weight > 0:
+                # Student-level PO scores
+                for sid in student_co_scores.index:
+                    co_score = student_co_scores.at[sid, co]
+                    if pd.notna(co_score):
+                        student_po_scores[sid][po] += co_score * weight
+                # Class-level PO scores
+                class_co_score = class_co_avg.get(co, 0)
+                class_po_scores[po] += class_co_score * weight
+                co_counts[po] += 1
+
+    # Normalize PO scores by the number of contributing COs
+    for po in po_columns:
+        if co_counts[po] > 0:
+            class_po_scores[po] /= co_counts[po]
+            for sid in student_po_scores:
+                student_po_scores[sid][po] /= co_counts[po]
+
+    # Step 4: Save PO scores to Excel
+    # Prepare student-level PO DataFrame
+    student_po_df = pd.DataFrame(student_po_scores).T.reset_index().rename(columns={'index': 'SIS User ID'})
+    # Prepare class-level PO averages
+    class_po_df = pd.DataFrame([class_po_scores], index=['Class Average'])
+    # Combine into a single DataFrame
+    output_df = pd.concat([student_po_df, class_po_df.reset_index().rename(columns={'index': 'SIS User ID'})])
+    
+    # Save to Excel
+    po_output_file = os.path.join(
+        output_folder,
+        f"{course_name}_{semester}_{section}_po_outcomes.xlsx"
+    )
+    try:
+        output_df.to_excel(po_output_file, index=False)
+        print(f"Saved PO outcomes to {po_output_file}")
+    except Exception as e:
+        print(f"Error saving PO outcomes to {po_output_file}: {e}")
+    return po_output_file  # Return the path for use in Task 3
+
+# --- New Function for Task 3: Compute Institutional Outcomes ---
+def compute_institutional_outcomes(config, course_name, semester, section, po_excel_file, output_folder):
+    """
+    Compute Institutional Outcome (IO) scores based on PO-to-IO mappings and PO scores.
+    Save results to an Excel file.
+    """
+    # Step 1: Read PO Excel file
+    po_df = safe_read_excel(po_excel_file)
+    if po_df is None:
+        print(f"Error: Could not read PO Excel file {po_excel_file}")
+        return
+
+    # Ensure expected columns are present
+    if 'SIS User ID' not in po_df.columns:
+        print(f"Error: Missing 'SIS User ID' column in {po_excel_file}")
+        return
+
+    # Extract student-level PO scores and class-level averages
+    student_po_scores = po_df[po_df['SIS User ID'] != 'Class Average'].set_index('SIS User ID').filter(like='PO').dropna()
+    class_po_avg = po_df[po_df['SIS User ID'] == 'Class Average'].filter(like='PO').iloc[0].to_dict()
+
+    # Step 2: Read PO-to-IO mapping from config
+    po_io_mapping_file = config.get('output', {}).get('po_io_mapping_file')
+    if not po_io_mapping_file:
+        print("Error: PO-to-IO mapping file not specified in config")
+        return
+    po_io_df = safe_read_excel(po_io_mapping_file)
+    if po_io_df is None:
+        print(f"Error: Could not read PO-to-IO mapping file {po_io_mapping_file}")
+        return
+
+    # Validate PO-to-IO mapping
+    if 'Program Outcome' not in po_io_df.columns:
+        print(f"Error: 'Program Outcome' column missing in {po_io_mapping_file}")
+        return
+    io_columns = [col for col in po_io_df.columns if col.startswith('IO')]
+    if not io_columns:
+        print(f"Error: No IO columns found in {po_io_mapping_file}")
+        return
+
+    # Step 3: Compute IO scores
+    # Initialize dictionaries for student-level and class-level IO scores
+    student_io_scores = {sid: {io: 0.0 for io in io_columns} for sid in student_po_scores.index}
+    class_io_scores = {io: 0.0 for io in io_columns}
+    po_counts = {io: 0 for io in io_columns}  # Track number of POs contributing to each IO
+
+    for _, row in po_io_df.iterrows():
+        po = row['Program Outcome']
+        if po not in student_po_scores.columns:
+            print(f"Warning: PO {po} not found in PO scores for {course_name}")
+            continue
+        for io in io_columns:
+            weight = row[io]
+            if weight > 0:
+                # Student-level IO scores
+                for sid in student_po_scores.index:
+                    po_score = student_po_scores.at[sid, po]
+                    if pd.notna(po_score):
+                        student_io_scores[sid][io] += po_score * weight
+                # Class-level IO scores
+                class_po_score = class_po_avg.get(po, 0)
+                class_io_scores[io] += class_po_score * weight
+                po_counts[io] += 1
+
+    # Normalize IO scores by the number of contributing POs
+    for io in io_columns:
+        if po_counts[io] > 0:
+            class_io_scores[io] /= po_counts[io]
+            for sid in student_io_scores:
+                student_io_scores[sid][io] /= po_counts[io]
+
+    # Step 4: Save IO scores to Excel
+    # Prepare student-level IO DataFrame
+    student_io_df = pd.DataFrame(student_io_scores).T.reset_index().rename(columns={'index': 'SIS User ID'})
+    # Prepare class-level IO averages
+    class_io_df = pd.DataFrame([class_io_scores], index=['Class Average'])
+    # Combine into a single DataFrame
+    output_df = pd.concat([student_io_df, class_io_df.reset_index().rename(columns={'index': 'SIS User ID'})])
+    
+    # Save to Excel
+    io_output_file = os.path.join(
+        output_folder,
+        f"{course_name}_{semester}_{section}_io_outcomes.xlsx"
+    )
+    try:
+        output_df.to_excel(io_output_file, index=False)
+        print(f"Saved IO outcomes to {io_output_file}")
+    except Exception as e:
+        print(f"Error saving IO outcomes to {io_output_file}: {e}")
+
 def main():
     generate_mappings()
     config = load_config("acat_config.json")
@@ -192,6 +379,11 @@ def main():
             try:
                 acat.save_to_excel(student_outcomes, excel_output)
                 acat.save_to_sqlite(db_output, student_outcomes)
+                # --- Task 2: Compute PO scores after saving CO outcomes ---
+                po_output_file = compute_program_outcomes(config, course_name, semester, section, excel_output, excel_output_folder)
+                # --- Task 3: Compute IO scores after saving PO outcomes ---
+                if po_output_file:
+                    compute_institutional_outcomes(config, course_name, semester, section, po_output_file, excel_output_folder)
             except Exception as e:
                 print(f"Error saving results for course {course_name} section {section}: {e}")
 
