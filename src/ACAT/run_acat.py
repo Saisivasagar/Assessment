@@ -384,6 +384,9 @@ def main():
                 # --- Task 3: Compute IO scores after saving PO outcomes ---
                 if po_output_file:
                     compute_institutional_outcomes(config, course_name, semester, section, po_output_file, excel_output_folder)
+
+                # --- Task 2: Compute PO scores after saving CO outcomes ---
+                compute_program_outcomes(config, course_name, semester, section, excel_output, excel_output_folder)
             except Exception as e:
                 print(f"Error saving results for course {course_name} section {section}: {e}")
 
