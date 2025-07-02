@@ -281,8 +281,8 @@ def compute_student_assessments(config, course_name, semester, section, co_excel
     )
     institutional_outcome_agent = Agent(
         role='Institutional Outcome Assessment Agent',
-        goal='Evaluate student attainment of institutional goals based on institutional outcome data.',
-        backstory='Experienced in institutional-level outcome analysis with a focus on broad educational goals.'
+        goal='Evaluate student attainment of institutional goals.',
+        backstory='Experienced in institutional-level outcome analysis.'
     )
     overall_assessment_agent = Agent(
         role='Student Learning Overall Assessment Agent',
@@ -307,7 +307,7 @@ def compute_student_assessments(config, course_name, semester, section, co_excel
         io_task = Task(
             description=f"Analyze institutional outcome data for student {sid}: {io_data}",
             agent=institutional_outcome_agent,
-            expected_output=f"Textual summary of student {sid}'s attainment of institutional goals."
+            expected_output=f"Textual summary of student {sid}'s institutional goal attainment."
         )
         overall_task = Task(
             description=f"Combine CO ({co_data}), PO ({po_data}), and IO ({io_data}) data for student {sid} to provide overall capability insights.",
@@ -415,4 +415,3 @@ def main():
                 print(f"Error saving results for course {course_name} section {section}: {e}")
 
 if __name__ == "__main__":
-    main()
