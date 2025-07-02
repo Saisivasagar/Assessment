@@ -4,6 +4,7 @@ import re
 import pandas as pd
 from acat import ACAT
 import glob
+from crewai import Agent, Task, Crew
 
 def safe_read_excel(filepath):
     try:
@@ -126,26 +127,15 @@ def generate_mappings():
         print(f"Error writing mapping files: {e}")
 
 def compute_program_outcomes(config, course_name, semester, section, co_excel_file, output_folder):
-    """
-    Compute Program Outcome (PO) scores based on CO-to-PO mappings and CO scores.
-    Save results to an Excel file.
-    """
-    # Step 1: Read CO Excel file
     co_df = safe_read_excel(co_excel_file)
     if co_df is None:
         print(f"Error: Could not read CO Excel file {co_excel_file}")
         return
-
-    # Ensure expected columns are present
     if 'SIS User ID' not in co_df.columns or 'Course Outcome' not in co_df.columns:
         print(f"Error: Missing required columns in {co_excel_file}")
         return
-
-    # Extract student-level CO scores and class-level averages
     student_co_scores = co_df.set_index('SIS User ID').filter(like='CO').dropna()
-    class_co_avg = student_co_scores.mean().to_dict()  # Class-level CO averages
-
-    # Step 2: Read CO-to-PO mapping from config
+    class_co_avg = student_co_scores.mean().to_dict()
     co_po_mapping_file = config.get('output', {}).get('co_po_mapping_file')
     if not co_po_mapping_file:
         print("Error: CO-to-PO mapping file not specified in config")
@@ -154,8 +144,6 @@ def compute_program_outcomes(config, course_name, semester, section, co_excel_fi
     if co_po_df is None:
         print(f"Error: Could not read CO-to-PO mapping file {co_po_mapping_file}")
         return
-
-    # Validate CO-to-PO mapping
     if 'Course Outcome' not in co_po_df.columns:
         print(f"Error: 'Course Outcome' column missing in {co_po_mapping_file}")
         return
@@ -163,20 +151,14 @@ def compute_program_outcomes(config, course_name, semester, section, co_excel_fi
     if not po_columns:
         print(f"Error: No PO columns found in {co_po_mapping_file}")
         return
-
-    # Filter mappings for the current course
     course_co_prefix = f"{course_name}: "
     co_po_df = co_po_df[co_po_df['Course Outcome'].str.startswith(course_co_prefix)]
     if co_po_df.empty:
         print(f"Warning: No CO-to-PO mappings found for course {course_name}")
         return
-
-    # Step 3: Compute PO scores
-    # Initialize dictionaries for student-level and class-level PO scores
     student_po_scores = {sid: {po: 0.0 for po in po_columns} for sid in student_co_scores.index}
     class_po_scores = {po: 0.0 for po in po_columns}
-    co_counts = {po: 0 for po in po_columns}  # Track number of COs contributing to each PO
-
+    co_counts = {po: 0 for po in po_columns}
     for _, row in co_po_df.iterrows():
         co = row['Course Outcome'].replace(course_co_prefix, '')
         if co not in student_co_scores.columns:
@@ -185,32 +167,21 @@ def compute_program_outcomes(config, course_name, semester, section, co_excel_fi
         for po in po_columns:
             weight = row[po]
             if weight > 0:
-                # Student-level PO scores
                 for sid in student_co_scores.index:
                     co_score = student_co_scores.at[sid, co]
                     if pd.notna(co_score):
                         student_po_scores[sid][po] += co_score * weight
-                # Class-level PO scores
                 class_co_score = class_co_avg.get(co, 0)
                 class_po_scores[po] += class_co_score * weight
                 co_counts[po] += 1
-
-    # Normalize PO scores by the number of contributing COs
     for po in po_columns:
         if co_counts[po] > 0:
             class_po_scores[po] /= co_counts[po]
             for sid in student_po_scores:
                 student_po_scores[sid][po] /= co_counts[po]
-
-    # Step 4: Save PO scores to Excel
-    # Prepare student-level PO DataFrame
     student_po_df = pd.DataFrame(student_po_scores).T.reset_index().rename(columns={'index': 'SIS User ID'})
-    # Prepare class-level PO averages
     class_po_df = pd.DataFrame([class_po_scores], index=['Class Average'])
-    # Combine into a single DataFrame
     output_df = pd.concat([student_po_df, class_po_df.reset_index().rename(columns={'index': 'SIS User ID'})])
-    
-    # Save to Excel
     po_output_file = os.path.join(
         output_folder,
         f"{course_name}_{semester}_{section}_po_outcomes.xlsx"
@@ -220,30 +191,18 @@ def compute_program_outcomes(config, course_name, semester, section, co_excel_fi
         print(f"Saved PO outcomes to {po_output_file}")
     except Exception as e:
         print(f"Error saving PO outcomes to {po_output_file}: {e}")
-    return po_output_file  # Return the path for use in Task 3
+    return po_output_file
 
-# --- New Function for Task 3: Compute Institutional Outcomes ---
 def compute_institutional_outcomes(config, course_name, semester, section, po_excel_file, output_folder):
-    """
-    Compute Institutional Outcome (IO) scores based on PO-to-IO mappings and PO scores.
-    Save results to an Excel file.
-    """
-    # Step 1: Read PO Excel file
     po_df = safe_read_excel(po_excel_file)
     if po_df is None:
         print(f"Error: Could not read PO Excel file {po_excel_file}")
         return
-
-    # Ensure expected columns are present
     if 'SIS User ID' not in po_df.columns:
         print(f"Error: Missing 'SIS User ID' column in {po_excel_file}")
         return
-
-    # Extract student-level PO scores and class-level averages
     student_po_scores = po_df[po_df['SIS User ID'] != 'Class Average'].set_index('SIS User ID').filter(like='PO').dropna()
     class_po_avg = po_df[po_df['SIS User ID'] == 'Class Average'].filter(like='PO').iloc[0].to_dict()
-
-    # Step 2: Read PO-to-IO mapping from config
     po_io_mapping_file = config.get('output', {}).get('po_io_mapping_file')
     if not po_io_mapping_file:
         print("Error: PO-to-IO mapping file not specified in config")
@@ -252,8 +211,6 @@ def compute_institutional_outcomes(config, course_name, semester, section, po_ex
     if po_io_df is None:
         print(f"Error: Could not read PO-to-IO mapping file {po_io_mapping_file}")
         return
-
-    # Validate PO-to-IO mapping
     if 'Program Outcome' not in po_io_df.columns:
         print(f"Error: 'Program Outcome' column missing in {po_io_mapping_file}")
         return
@@ -261,13 +218,9 @@ def compute_institutional_outcomes(config, course_name, semester, section, po_ex
     if not io_columns:
         print(f"Error: No IO columns found in {po_io_mapping_file}")
         return
-
-    # Step 3: Compute IO scores
-    # Initialize dictionaries for student-level and class-level IO scores
     student_io_scores = {sid: {io: 0.0 for io in io_columns} for sid in student_po_scores.index}
     class_io_scores = {io: 0.0 for io in io_columns}
-    po_counts = {io: 0 for io in io_columns}  # Track number of POs contributing to each IO
-
+    po_counts = {io: 0 for io in io_columns}
     for _, row in po_io_df.iterrows():
         po = row['Program Outcome']
         if po not in student_po_scores.columns:
@@ -276,32 +229,21 @@ def compute_institutional_outcomes(config, course_name, semester, section, po_ex
         for io in io_columns:
             weight = row[io]
             if weight > 0:
-                # Student-level IO scores
                 for sid in student_po_scores.index:
                     po_score = student_po_scores.at[sid, po]
                     if pd.notna(po_score):
                         student_io_scores[sid][io] += po_score * weight
-                # Class-level IO scores
                 class_po_score = class_po_avg.get(po, 0)
                 class_io_scores[io] += class_po_score * weight
                 po_counts[io] += 1
-
-    # Normalize IO scores by the number of contributing POs
     for io in io_columns:
         if po_counts[io] > 0:
             class_io_scores[io] /= po_counts[io]
             for sid in student_io_scores:
                 student_io_scores[sid][io] /= po_counts[io]
-
-    # Step 4: Save IO scores to Excel
-    # Prepare student-level IO DataFrame
     student_io_df = pd.DataFrame(student_io_scores).T.reset_index().rename(columns={'index': 'SIS User ID'})
-    # Prepare class-level IO averages
     class_io_df = pd.DataFrame([class_io_scores], index=['Class Average'])
-    # Combine into a single DataFrame
     output_df = pd.concat([student_io_df, class_io_df.reset_index().rename(columns={'index': 'SIS User ID'})])
-    
-    # Save to Excel
     io_output_file = os.path.join(
         output_folder,
         f"{course_name}_{semester}_{section}_io_outcomes.xlsx"
@@ -311,6 +253,91 @@ def compute_institutional_outcomes(config, course_name, semester, section, po_ex
         print(f"Saved IO outcomes to {io_output_file}")
     except Exception as e:
         print(f"Error saving IO outcomes to {io_output_file}: {e}")
+    return io_output_file
+
+def compute_student_assessments(config, course_name, semester, section, co_excel_file, po_excel_file, io_excel_file, output_folder):
+    co_df = safe_read_excel(co_excel_file)
+    po_df = safe_read_excel(po_excel_file)
+    io_df = safe_read_excel(io_excel_file)
+    if co_df is None or po_df is None or io_df is None:
+        print(f"Error: Could not read input files for student assessments in {course_name}_{semester}_{section}")
+        return
+    student_co_scores = co_df[co_df['SIS User ID'] != 'Class Average'].set_index('SIS User ID').filter(like='CO')
+    student_po_scores = po_df[po_df['SIS User ID'] != 'Class Average'].set_index('SIS User ID').filter(like='PO')
+    student_io_scores = io_df[io_df['SIS User ID'] != 'Class Average'].set_index('SIS User ID').filter(like='IO')
+    student_ids = student_co_scores.index.intersection(student_po_scores.index).intersection(student_io_scores.index)
+    if student_ids.empty:
+        print(f"Error: No common student IDs found for {course_name}_{semester}_{section}")
+        return
+    course_outcome_agent = Agent(
+        role='Course Outcome Assessment Agent',
+        goal='Analyze student performance at the course outcome level and identify strengths and weaknesses.',
+        backstory='Expert in evaluating course-level student performance data.'
+    )
+    program_outcome_agent = Agent(
+        role='Program Outcome Assessment Agent',
+        goal='Assess student capabilities at the program outcome level.',
+        backstory='Specialist in program-level educational assessment.'
+    )
+    institutional_outcome_agent = Agent(
+        role='Institutional Outcome Assessment Agent',
+        goal='Evaluate student attainment of institutional goals based on institutional outcome data.',
+        backstory='Experienced in institutional-level outcome analysis with a focus on broad educational goals.'
+    )
+    overall_assessment_agent = Agent(
+        role='Student Learning Overall Assessment Agent',
+        goal='Combine CO, PO, and IO data to provide comprehensive student capability insights.',
+        backstory='Expert in synthesizing multi-level educational data for holistic student assessment.'
+    )
+    assessments = []
+    for sid in student_ids:
+        co_data = student_co_scores.loc[sid].to_dict()
+        po_data = student_po_scores.loc[sid].to_dict()
+        io_data = student_io_scores.loc[sid].to_dict()
+        co_task = Task(
+            description=f"Analyze course outcome data for student {sid}: {co_data}",
+            agent=course_outcome_agent,
+            expected_output=f"Textual summary of student {sid}'s strengths and weaknesses in course outcomes."
+        )
+        po_task = Task(
+            description=f"Analyze program outcome data for student {sid}: {po_data}",
+            agent=program_outcome_agent,
+            expected_output=f"Textual summary of student {sid}'s program-level capabilities."
+        )
+        io_task = Task(
+            description=f"Analyze institutional outcome data for student {sid}: {io_data}",
+            agent=institutional_outcome_agent,
+            expected_output=f"Textual summary of student {sid}'s attainment of institutional goals."
+        )
+        overall_task = Task(
+            description=f"Combine CO ({co_data}), PO ({po_data}), and IO ({io_data}) data for student {sid} to provide overall capability insights.",
+            agent=overall_assessment_agent,
+            expected_output=f"Comprehensive textual summary of student {sid}'s overall learning capabilities."
+        )
+        crew = Crew(
+            agents=[course_outcome_agent, program_outcome_agent, institutional_outcome_agent, overall_assessment_agent],
+            tasks=[co_task, po_task, io_task, overall_task],
+            verbose=False
+        )
+        results = crew.kickoff()
+        assessment_summary = {
+            'SIS User ID': sid,
+            'Course Outcome Assessment': results[0] if results else 'No assessment generated',
+            'Program Outcome Assessment': results[1] if len(results) > 1 else 'No assessment generated',
+            'Institutional Outcome Assessment': results[2] if len(results) > 2 else 'No assessment generated',
+            'Overall Assessment': results[3] if len(results) > 3 else 'No assessment generated'
+        }
+        assessments.append(assessment_summary)
+    assessment_df = pd.DataFrame(assessments)
+    output_file = os.path.join(
+        output_folder,
+        f"{course_name}_{semester}_{section}_student_assessment.xlsx"
+    )
+    try:
+        assessment_df.to_excel(output_file, index=False)
+        print(f"Saved student assessments to {output_file}")
+    except Exception as e:
+        print(f"Error saving student assessments to {output_file}: {e}")
 
 def main():
     generate_mappings()
@@ -379,14 +406,11 @@ def main():
             try:
                 acat.save_to_excel(student_outcomes, excel_output)
                 acat.save_to_sqlite(db_output, student_outcomes)
-                # --- Task 2: Compute PO scores after saving CO outcomes ---
                 po_output_file = compute_program_outcomes(config, course_name, semester, section, excel_output, excel_output_folder)
-                # --- Task 3: Compute IO scores after saving PO outcomes ---
                 if po_output_file:
-                    compute_institutional_outcomes(config, course_name, semester, section, po_output_file, excel_output_folder)
-
-                # --- Task 2: Compute PO scores after saving CO outcomes ---
-                compute_program_outcomes(config, course_name, semester, section, excel_output, excel_output_folder)
+                    io_output_file = compute_institutional_outcomes(config, course_name, semester, section, po_output_file, excel_output_folder)
+                    if io_output_file:
+                        compute_student_assessments(config, course_name, semester, section, excel_output, po_output_file, io_output_file, excel_output_folder)
             except Exception as e:
                 print(f"Error saving results for course {course_name} section {section}: {e}")
 
