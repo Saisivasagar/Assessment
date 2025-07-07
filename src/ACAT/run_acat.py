@@ -8,7 +8,6 @@ import glob
 from crewai import Agent, Task, Crew
 import plotly.express as px
 import io
-import zipfile
 
 st.set_page_config(page_title="Outcome Assessment System", layout="wide")
 
@@ -383,15 +382,6 @@ def compute_student_assessments(config, course_name, semester, section, co_excel
         print(f"Error saving student assessments to {output_file}: {e}")
         st.error(f"Error saving student assessments to {output_file}: {e}")
 
-def create_zip_file(files):
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for file in files:
-            if os.path.exists(file):
-                zip_file.write(file, os.path.basename(file))
-    buffer.seek(0)
-    return buffer
-
 def streamlit_app():
     st.title("Program and Institutional Outcomes Assessment System")
     with st.container():
@@ -467,21 +457,11 @@ def streamlit_app():
     output_folder = config.get('output', {}).get('excel_folder', 'output') if 'config' in locals() else 'output'
     excel_files = glob.glob(os.path.join(output_folder, "*.xlsx"))
     if excel_files:
-        st.subheader("Download All Output Files")
+        tabs = st.tabs(["Course Outcomes", "Program Outcomes", "Institutional Outcomes", "Student Assessments"])
         courses = list(set(f.split('_')[0] for f in excel_files))
         course_filter = st.selectbox("Select Course", ["All"] + courses, key="course_filter")
         sections = list(set(f.split('_')[2].replace('_outcomes.xlsx', '').replace('_student_assessment.xlsx', '') for f in excel_files if course_filter == "All" or f.startswith(course_filter)))
         section_filter = st.selectbox("Select Section", ["All"] + sections, key="section_filter")
-        filtered_files = [f for f in excel_files if (course_filter == "All" or f.startswith(course_filter)) and (section_filter == "All" or section_filter in f)]
-        if filtered_files:
-            zip_buffer = create_zip_file(filtered_files)
-            st.download_button(
-                label="Download All Files as ZIP",
-                data=zip_buffer,
-                file_name="output_files.zip",
-                mime="application/zip"
-            )
-        tabs = st.tabs(["Course Outcomes", "Program Outcomes", "Institutional Outcomes", "Student Assessments"])
         for i, tab_name in enumerate(["co", "po", "io", "student_assessment"]):
             with tabs[i]:
                 filtered_files = [f for f in excel_files if tab_name in f.lower() and (course_filter == "All" or f.startswith(course_filter)) and (section_filter == "All" or section_filter in f)]
@@ -500,9 +480,6 @@ def streamlit_app():
                                     dist_data = df[numeric_cols].melt()
                                     fig_dist = px.histogram(dist_data, x="value", nbins=20, title=f"{tab_name.upper()} Score Distribution")
                                     st.plotly_chart(fig_dist)
-                                    box_data = df[numeric_cols].melt()
-                                    fig_box = px.box(box_data, x="variable", y="value", title=f"{tab_name.upper()} Score Distribution (Box Plot)")
-                                    st.plotly_chart(fig_box)
                             buffer = io.BytesIO()
                             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                                 df.to_excel(writer, index=False)
