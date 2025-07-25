@@ -7,6 +7,7 @@ from acat import ACAT
 import glob
 from crewai import Agent, Task, Crew
 import plotly.express as px
+import plotly.graph_objects as go
 import io
 
 st.set_page_config(page_title="Outcome Assessment System", layout="wide")
@@ -382,6 +383,89 @@ def compute_student_assessments(config, course_name, semester, section, co_excel
         print(f"Error saving student assessments to {output_file}: {e}")
         st.error(f"Error saving student assessments to {output_file}: {e}")
 
+def generate_comparison_charts(dfs, tab_name, course_filter, section_filter, outcome_filter, score_range, group_by):
+    if not dfs:
+        st.write("No data available for comparison.")
+        return
+    combined_df = pd.concat([df.assign(Source=os.path.basename(file)) for file, df in dfs.items()])
+    if 'SIS User ID' in combined_df.columns:
+        combined_df = combined_df[combined_df['SIS User ID'] != 'Class Average']
+    if course_filter != "All":
+        combined_df = combined_df[combined_df['Source'].str.startswith(course_filter)]
+    if section_filter != "All":
+        combined_df = combined_df[combined_df['Source'].str.contains(section_filter)]
+    if score_range:
+        numeric_cols = combined_df.select_dtypes(include=['float64', 'int64']).columns
+        for col in numeric_cols:
+            combined_df = combined_df[(combined_df[col] >= score_range[0]) & (combined_df[col] <= score_range[1])]
+    if outcome_filter and outcome_filter != "All":
+        if outcome_filter in combined_df.columns:
+            combined_df = combined_df[['SIS User ID', outcome_filter, 'Source']]
+        else:
+            st.warning(f"Outcome {outcome_filter} not found in data.")
+            return
+    if combined_df.empty:
+        st.write("No data available after applying filters.")
+        return
+    if group_by == "Student":
+        numeric_cols = combined_df.select_dtypes(include=['float64', 'int64']).columns
+        if not numeric_cols.empty:
+            fig = go.Figure()
+            for sid in combined_df['SIS User ID'].unique()[:10]:
+                student_data = combined_df[combined_df['SIS User ID'] == sid]
+                if outcome_filter != "All":
+                    fig.add_trace(go.Bar(x=[outcome_filter], y=student_data[outcome_filter], name=f"Student {sid}"))
+                else:
+                    for col in numeric_cols:
+                        fig.add_trace(go.Bar(x=[col], y=student_data[col], name=f"Student {sid} - {col}"))
+            fig.update_layout(
+                title=f"{tab_name.upper()} Comparison by Student",
+                xaxis_title="Outcomes",
+                yaxis_title="Scores",
+                barmode='group'
+            )
+            st.plotly_chart(fig)
+    elif group_by == "Section":
+        numeric_cols = combined_df.select_dtypes(include=['float64', 'int64']).columns
+        if not numeric_cols.empty:
+            sections = combined_df['Source'].str.extract(r'_(\w+)_').iloc[:, 0].unique()
+            fig = go.Figure()
+            for section in sections:
+                section_data = combined_df[combined_df['Source'].str.contains(section)]
+                if not section_data.empty:
+                    avg_scores = section_data[numeric_cols].mean()
+                    if outcome_filter != "All" and outcome_filter in avg_scores.index:
+                        fig.add_trace(go.Bar(x=[outcome_filter], y=[avg_scores[outcome_filter]], name=f"Section {section}"))
+                    else:
+                        fig.add_trace(go.Bar(x=avg_scores.index, y=avg_scores.values, name=f"Section {section}"))
+            fig.update_layout(
+                title=f"{tab_name.upper()} Comparison by Section",
+                xaxis_title="Outcomes",
+                yaxis_title="Average Scores",
+                barmode='group'
+            )
+            st.plotly_chart(fig)
+    elif group_by == "Course":
+        numeric_cols = combined_df.select_dtypes(include=['float64', 'int64']).columns
+        if not numeric_cols.empty:
+            courses = combined_df['Source'].str.split('_').str[0].unique()
+            fig = go.Figure()
+            for course in courses:
+                course_data = combined_df[combined_df['Source'].str.startswith(course)]
+                if not course_data.empty:
+                    avg_scores = course_data[numeric_cols].mean()
+                    if outcome_filter != "All" and outcome_filter in avg_scores.index:
+                        fig.add_trace(go.Bar(x=[outcome_filter], y=[avg_scores[outcome_filter]], name=f"Course {course}"))
+                    else:
+                        fig.add_trace(go.Bar(x=avg_scores.index, y=avg_scores.values, name=f"Course {course}"))
+            fig.update_layout(
+                title=f"{tab_name.upper()} Comparison by Course",
+                xaxis_title="Outcomes",
+                yaxis_title="Average Scores",
+                barmode='group'
+            )
+            st.plotly_chart(fig)
+
 def streamlit_app():
     st.title("Program and Institutional Outcomes Assessment System")
     with st.container():
@@ -457,18 +541,40 @@ def streamlit_app():
     output_folder = config.get('output', {}).get('excel_folder', 'output') if 'config' in locals() else 'output'
     excel_files = glob.glob(os.path.join(output_folder, "*.xlsx"))
     if excel_files:
-        tabs = st.tabs(["Course Outcomes", "Program Outcomes", "Institutional Outcomes", "Student Assessments"])
-        courses = list(set(f.split('_')[0] for f in excel_files))
-        course_filter = st.selectbox("Select Course", ["All"] + courses, key="course_filter")
-        sections = list(set(f.split('_')[2].replace('_outcomes.xlsx', '').replace('_student_assessment.xlsx', '') for f in excel_files if course_filter == "All" or f.startswith(course_filter)))
-        section_filter = st.selectbox("Select Section", ["All"] + sections, key="section_filter")
+        st.subheader("Data Filters and Grouping")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            courses = list(set(f.split('_')[0] for f in excel_files))
+            course_filter = st.selectbox("Select Course", ["All"] + courses, key="course_filter")
+        with col2:
+            sections = list(set(f.split('_')[2].replace('_outcomes.xlsx', '').replace('_student_assessment.xlsx', '') for f in excel_files if course_filter == "All" or f.startswith(course_filter)))
+            section_filter = st.selectbox("Select Section", ["All"] + sections, key="section_filter")
+        with col3:
+            semesters = list(set(f.split('_')[1] for f in excel_files if course_filter == "All" or f.startswith(course_filter)))
+            semester_filter = st.selectbox("Select Semester", ["All"] + semesters, key="semester_filter")
+        with col4:
+            group_by = st.selectbox("Group By", ["Student", "Section", "Course"], key="group_by")
+        st.subheader("Outcome and Score Filters")
+        col5, col6 = st.columns(2)
+        with col5:
+            outcome_types = ["All"] + [col for file in excel_files for col in safe_read_excel(file).columns if col.startswith(('CO', 'PO', 'IO'))]
+            outcome_filter = st.selectbox("Select Outcome", outcome_types, key="outcome_filter")
+        with col6:
+            score_range = st.slider("Score Range", min_value=0.0, max_value=100.0, value=(0.0, 100.0), step=1.0)
+        tabs = st.tabs(["Course Outcomes", "Program Outcomes", "Institutional Outcomes", "Student Assessments", "Comparisons"])
         for i, tab_name in enumerate(["co", "po", "io", "student_assessment"]):
             with tabs[i]:
-                filtered_files = [f for f in excel_files if tab_name in f.lower() and (course_filter == "All" or f.startswith(course_filter)) and (section_filter == "All" or section_filter in f)]
+                filtered_files = [f for f in excel_files if tab_name in f.lower() and (course_filter == "All" or f.startswith(course_filter)) and (section_filter == "All" or section_filter in f) and (semester_filter == "All" or semester_filter in f)]
                 if filtered_files:
                     for file in filtered_files:
                         df = safe_read_excel(file)
                         if df is not None:
+                            if score_range != (0.0, 100.0):
+                                numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
+                                for col in numeric_cols:
+                                    df = df[(df[col] >= score_range[0]) & (df[col] <= score_range[1])]
+                            if outcome_filter != "All" and outcome_filter in df.columns:
+                                df = df[['SIS User ID', outcome_filter]]
                             st.subheader(f"Data from {os.path.basename(file)}")
                             st.dataframe(df)
                             if tab_name != "student_assessment":
@@ -491,6 +597,14 @@ def streamlit_app():
                             )
                 else:
                     st.write("No data available for this tab.")
+        with tabs[4]:
+            st.subheader("Comparison Visualizations")
+            comparison_tabs = st.tabs(["CO Comparisons", "PO Comparisons", "IO Comparisons"])
+            for j, comp_tab_name in enumerate(["co", "po", "io"]):
+                with comparison_tabs[j]:
+                    filtered_files = [f for f in excel_files if comp_tab_name in f.lower() and (course_filter == "All" or f.startswith(course_filter)) and (section_filter == "All" or section_filter in f) and (semester_filter == "All" or semester_filter in f)]
+                    dfs = {f: safe_read_excel(f) for f in filtered_files if safe_read_excel(f) is not None}
+                    generate_comparison_charts(dfs, comp_tab_name, course_filter, section_filter, outcome_filter, score_range, group_by)
     else:
         st.write("No output files found. Please process files first.")
 
