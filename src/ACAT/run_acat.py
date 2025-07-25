@@ -9,6 +9,7 @@ from crewai import Agent, Task, Crew
 import plotly.express as px
 import plotly.graph_objects as go
 import io
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 st.set_page_config(page_title="Outcome Assessment System", layout="wide")
 
@@ -466,15 +467,149 @@ def generate_comparison_charts(dfs, tab_name, course_filter, section_filter, out
             )
             st.plotly_chart(fig)
 
+def validate_excel_file(file, file_type, log_container):
+    try:
+        df = pd.read_excel(file)
+        df.columns = [str(col).strip() for col in df.columns]
+        validation_errors = []
+        
+        if file_type == "outcomes":
+            if 'Course Outcome' not in df.columns:
+                validation_errors.append("Missing 'Course Outcome' column")
+            if df['Course Outcome'].isnull().any():
+                validation_errors.append("Null values found in 'Course Outcome' column")
+            if df['Course Outcome'].duplicated().any():
+                validation_errors.append("Duplicate values found in 'Course Outcome' column")
+                
+        elif file_type == "grades":
+            if 'SIS User ID' not in df.columns:
+                validation_errors.append("Missing 'SIS User ID' column")
+            if df['SIS User ID'].isnull().any():
+                validation_errors.append("Null values found in 'SIS User ID' column")
+            if df['SIS User ID'].duplicated().any():
+                validation_errors.append("Duplicate 'SIS User ID' values found")
+            numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
+            for col in numeric_cols:
+                if df[col].lt(0).any() or df[col].gt(100).any():
+                    validation_errors.append(f"Invalid scores in column '{col}': values must be between 0 and 100")
+                if df[col].isnull().any():
+                    validation_errors.append(f"Null values found in numeric column '{col}'")
+                    
+        elif file_type == "assignments":
+            if df.iloc[:, 0].isnull().any():
+                validation_errors.append("Null values found in first column (expected outcomes)")
+            if df.iloc[:, 0].duplicated().any():
+                validation_errors.append("Duplicate outcomes found in first column")
+                
+        if validation_errors:
+            log_container.error(f"Validation failed for {file.name}: {', '.join(validation_errors)}")
+            return False
+        log_container.success(f"Validation passed for {file.name}")
+        return True
+    except Exception as e:
+        log_container.error(f"Error validating {file.name}: {e}")
+        return False
+
+def parallel_process_course(course, config, excel_output_folder, log_container):
+    course_name = course.get('course_name')
+    semester = course.get('semester')
+    outcomes_file = course.get('outcomes_file')
+    if not course_name or not semester or not outcomes_file:
+        log_container.warning(f"Skipping course due to missing info: {course}")
+        return []
+    outcomes = read_outcomes(outcomes_file)
+    if not outcomes:
+        log_container.warning(f"No outcomes found for course {course_name}, skipping.")
+        return []
+    log_container.info(f"Processing course: {course_name}")
+    log_container.write(f"Outcomes: {outcomes}")
+    
+    results = []
+    def process_section(section_data):
+        section = section_data.get('section')
+        if not section:
+            log_container.warning("Skipping section with missing section name.")
+            return None
+        log_container.info(f"Section: {section}")
+        assignments_mapping = read_assignments(section_data.get('assignments_file', ''), outcomes)
+        log_container.write(f"Assignments Mappings: {assignments_mapping}")
+        final_outcomes = {outcome: assignments_mapping.get(outcome, []) for outcome in outcomes}
+        log_container.write(f"Final Outcomes: {final_outcomes}")
+        required_columns = set(assignment for criteria in final_outcomes.values() for assignment in criteria)
+        grades_file = section_data.get('grades_file')
+        if not grades_file:
+            log_container.warning(f"Grades file missing for section {section} of course {course_name}, skipping.")
+            return None
+        student_data = read_grades(grades_file, required_columns=required_columns)
+        if not student_data:
+            log_container.warning(f"No student data found for section {section} of course {course_name}, skipping.")
+            return None
+        log_container.write(f"Student Data: {student_data}")
+        try:
+            acat = ACAT(course_name, semester, section, final_outcomes, student_data)
+            student_outcomes = acat.compute_course_outcomes()
+            acat.summarize_course_outcomes(student_outcomes)
+            excel_output = os.path.join(excel_output_folder, f"{course_name}_{semester}_{section}_outcomes.xlsx")
+            db_output = os.path.join(config.get('output', {}).get('database_folder', 'db'), f"{course_name}_{semester}_{section}_outcomes.db")
+            os.makedirs(os.path.dirname(db_output), exist_ok=True)
+            acat.save_to_excel(student_outcomes, excel_output)
+            acat.save_to_sqlite(db_output, student_outcomes)
+            po_output_file = compute_program_outcomes(config, course_name, semester, section, excel_output, excel_output_folder)
+            if po_output_file:
+                io_output_file = compute_institutional_outcomes(config, course_name, semester, section, po_output_file, excel_output_folder)
+                if io_output_file:
+                    compute_student_assessments(config, course_name, semester, section, excel_output, po_output_file, io_output_file, excel_output_folder)
+            log_container.success(f"Processed {course_name} {semester} {section}")
+            return excel_output
+        except Exception as e:
+            log_container.error(f"Error processing {course_name} section {section}: {e}")
+            return None
+    
+    with ThreadPoolExecutor() as executor:
+        future_to_section = {executor.submit(process_section, section_data): section_data for section_data in course.get('sections', [])}
+        for future in as_completed(future_to_section):
+            result = future.result()
+            if result:
+                results.append(result)
+    
+    return results
+
 def streamlit_app():
     st.title("Program and Institutional Outcomes Assessment System")
     with st.container():
         st.subheader("Upload Configuration and Input Files")
         config_file = st.file_uploader("Upload acat_config.json", type=["json"])
         uploaded_files = st.file_uploader("Upload Excel Files (outcomes, assignments, grades)", type=["xlsx"], accept_multiple_files=True)
-        st.subheader("Processing Log")
+        st.subheader("Validation and Processing Log")
         log_container = st.container()
-        if st.button("Process Files"):
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            validate_button = st.button("Validate Files")
+        with col2:
+            process_button = st.button("Process Files")
+        
+        if validate_button:
+            if config_file and uploaded_files:
+                with st.spinner("Validating files..."):
+                    config_path = "temp_config.json"
+                    with open(config_path, "wb") as f:
+                        f.write(config_file.getvalue())
+                    config = load_config(config_path)
+                    if not config or 'courses' not in config:
+                        log_container.error("Invalid or empty configuration file.")
+                        return
+                    all_valid = True
+                    for file in uploaded_files:
+                        file_type = "outcomes" if "outcomes" in file.name.lower() else "grades" if "grades" in file.name.lower() else "assignments"
+                        if not validate_excel_file(file, file_type, log_container):
+                            all_valid = False
+                    if all_valid:
+                        log_container.success("All files passed validation. Ready to process.")
+            else:
+                log_container.error("Please upload both config file and Excel files for validation.")
+        
+        if process_button:
             if config_file and uploaded_files:
                 with st.spinner("Processing files..."):
                     config_path = "temp_config.json"
@@ -486,58 +621,14 @@ def streamlit_app():
                         return
                     excel_output_folder = config.get('output', {}).get('excel_folder', 'output')
                     os.makedirs(excel_output_folder, exist_ok=True)
-                    for course in config['courses']:
-                        course_name = course.get('course_name')
-                        semester = course.get('semester')
-                        outcomes_file = course.get('outcomes_file')
-                        if not course_name or not semester or not outcomes_file:
-                            log_container.warning(f"Skipping course due to missing info: {course}")
-                            continue
-                        outcomes = read_outcomes(outcomes_file)
-                        if not outcomes:
-                            log_container.warning(f"No outcomes found for course {course_name}, skipping.")
-                            continue
-                        log_container.info(f"Processing course: {course_name}")
-                        log_container.write(f"Outcomes: {outcomes}")
-                        for section_data in course.get('sections', []):
-                            section = section_data.get('section')
-                            if not section:
-                                log_container.warning("Skipping section with missing section name.")
-                                continue
-                            log_container.info(f"Section: {section}")
-                            assignments_mapping = read_assignments(section_data.get('assignments_file', ''), outcomes)
-                            log_container.write(f"Assignments Mappings: {assignments_mapping}")
-                            final_outcomes = {outcome: assignments_mapping.get(outcome, []) for outcome in outcomes}
-                            log_container.write(f"Final Outcomes: {final_outcomes}")
-                            required_columns = set(assignment for criteria in final_outcomes.values() for assignment in criteria)
-                            grades_file = section_data.get('grades_file')
-                            if not grades_file:
-                                log_container.warning(f"Grades file missing for section {section} of course {course_name}, skipping.")
-                                continue
-                            student_data = read_grades(grades_file, required_columns=required_columns)
-                            if not student_data:
-                                log_container.warning(f"No student data found for section {section} of course {course_name}, skipping.")
-                                continue
-                            log_container.write(f"Student Data: {student_data}")
-                            try:
-                                acat = ACAT(course_name, semester, section, final_outcomes, student_data)
-                                student_outcomes = acat.compute_course_outcomes()
-                                acat.summarize_course_outcomes(student_outcomes)
-                                excel_output = os.path.join(excel_output_folder, f"{course_name}_{semester}_{section}_outcomes.xlsx")
-                                db_output = os.path.join(config.get('output', {}).get('database_folder', 'db'), f"{course_name}_{semester}_{section}_outcomes.db")
-                                os.makedirs(os.path.dirname(db_output), exist_ok=True)
-                                acat.save_to_excel(student_outcomes, excel_output)
-                                acat.save_to_sqlite(db_output, student_outcomes)
-                                po_output_file = compute_program_outcomes(config, course_name, semester, section, excel_output, excel_output_folder)
-                                if po_output_file:
-                                    io_output_file = compute_institutional_outcomes(config, course_name, semester, section, po_output_file, excel_output_folder)
-                                    if io_output_file:
-                                        compute_student_assessments(config, course_name, semester, section, excel_output, po_output_file, io_output_file, excel_output_folder)
-                                log_container.success(f"Processed {course_name} {semester} {section}")
-                            except Exception as e:
-                                log_container.error(f"Error processing {course_name} section {section}: {e}")
+                    
+                    with ThreadPoolExecutor() as executor:
+                        future_to_course = {executor.submit(parallel_process_course, course, config, excel_output_folder, log_container): course for course in config['courses']}
+                        for future in as_completed(future_to_course):
+                            future.result()
             else:
                 log_container.error("Please upload both config file and Excel files.")
+    
     output_folder = config.get('output', {}).get('excel_folder', 'output') if 'config' in locals() else 'output'
     excel_files = glob.glob(os.path.join(output_folder, "*.xlsx"))
     if excel_files:
