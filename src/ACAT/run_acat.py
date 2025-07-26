@@ -7,7 +7,9 @@ from acat import ACAT
 import glob
 from crewai import Agent, Task, Crew
 import plotly.express as px
+import plotly.graph_objects as go
 import io
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 st.set_page_config(page_title="Outcome Assessment System", layout="wide")
 
@@ -382,15 +384,232 @@ def compute_student_assessments(config, course_name, semester, section, co_excel
         print(f"Error saving student assessments to {output_file}: {e}")
         st.error(f"Error saving student assessments to {output_file}: {e}")
 
+def generate_comparison_charts(dfs, tab_name, course_filter, section_filter, outcome_filter, score_range, group_by):
+    if not dfs:
+        st.write("No data available for comparison.")
+        return
+    combined_df = pd.concat([df.assign(Source=os.path.basename(file)) for file, df in dfs.items()])
+    if 'SIS User ID' in combined_df.columns:
+        combined_df = combined_df[combined_df['SIS User ID'] != 'Class Average']
+    if course_filter != "All":
+        combined_df = combined_df[combined_df['Source'].str.startswith(course_filter)]
+    if section_filter != "All":
+        combined_df = combined_df[combined_df['Source'].str.contains(section_filter)]
+    if score_range:
+        numeric_cols = combined_df.select_dtypes(include=['float64', 'int64']).columns
+        for col in numeric_cols:
+            combined_df = combined_df[(combined_df[col] >= score_range[0]) & (combined_df[col] <= score_range[1])]
+    if outcome_filter and outcome_filter != "All":
+        if outcome_filter in combined_df.columns:
+            combined_df = combined_df[['SIS User ID', outcome_filter, 'Source']]
+        else:
+            st.warning(f"Outcome {outcome_filter} not found in data.")
+            return
+    if combined_df.empty:
+        st.write("No data available after applying filters.")
+        return
+    if group_by == "Student":
+        numeric_cols = combined_df.select_dtypes(include=['float64', 'int64']).columns
+        if not numeric_cols.empty:
+            fig = go.Figure()
+            for sid in combined_df['SIS User ID'].unique()[:10]:
+                student_data = combined_df[combined_df['SIS User ID'] == sid]
+                if outcome_filter != "All":
+                    fig.add_trace(go.Bar(x=[outcome_filter], y=student_data[outcome_filter], name=f"Student {sid}"))
+                else:
+                    for col in numeric_cols:
+                        fig.add_trace(go.Bar(x=[col], y=student_data[col], name=f"Student {sid} - {col}"))
+            fig.update_layout(
+                title=f"{tab_name.upper()} Comparison by Student",
+                xaxis_title="Outcomes",
+                yaxis_title="Scores",
+                barmode='group'
+            )
+            st.plotly_chart(fig)
+    elif group_by == "Section":
+        numeric_cols = combined_df.select_dtypes(include=['float64', 'int64']).columns
+        if not numeric_cols.empty:
+            sections = combined_df['Source'].str.extract(r'_(\w+)_').iloc[:, 0].unique()
+            fig = go.Figure()
+            for section in sections:
+                section_data = combined_df[combined_df['Source'].str.contains(section)]
+                if not section_data.empty:
+                    avg_scores = section_data[numeric_cols].mean()
+                    if outcome_filter != "All" and outcome_filter in avg_scores.index:
+                        fig.add_trace(go.Bar(x=[outcome_filter], y=[avg_scores[outcome_filter]], name=f"Section {section}"))
+                    else:
+                        fig.add_trace(go.Bar(x=avg_scores.index, y=avg_scores.values, name=f"Section {section}"))
+            fig.update_layout(
+                title=f"{tab_name.upper()} Comparison by Section",
+                xaxis_title="Outcomes",
+                yaxis_title="Average Scores",
+                barmode='group'
+            )
+            st.plotly_chart(fig)
+    elif group_by == "Course":
+        numeric_cols = combined_df.select_dtypes(include=['float64', 'int64']).columns
+        if not numeric_cols.empty:
+            courses = combined_df['Source'].str.split('_').str[0].unique()
+            fig = go.Figure()
+            for course in courses:
+                course_data = combined_df[combined_df['Source'].str.startswith(course)]
+                if not course_data.empty:
+                    avg_scores = course_data[numeric_cols].mean()
+                    if outcome_filter != "All" and outcome_filter in avg_scores.index:
+                        fig.add_trace(go.Bar(x=[outcome_filter], y=[avg_scores[outcome_filter]], name=f"Course {course}"))
+                    else:
+                        fig.add_trace(go.Bar(x=avg_scores.index, y=avg_scores.values, name=f"Course {course}"))
+            fig.update_layout(
+                title=f"{tab_name.upper()} Comparison by Course",
+                xaxis_title="Outcomes",
+                yaxis_title="Average Scores",
+                barmode='group'
+            )
+            st.plotly_chart(fig)
+
+def validate_excel_file(file, file_type, log_container):
+    try:
+        df = pd.read_excel(file)
+        df.columns = [str(col).strip() for col in df.columns]
+        validation_errors = []
+        
+        if file_type == "outcomes":
+            if 'Course Outcome' not in df.columns:
+                validation_errors.append("Missing 'Course Outcome' column")
+            if df['Course Outcome'].isnull().any():
+                validation_errors.append("Null values found in 'Course Outcome' column")
+            if df['Course Outcome'].duplicated().any():
+                validation_errors.append("Duplicate values found in 'Course Outcome' column")
+                
+        elif file_type == "grades":
+            if 'SIS User ID' not in df.columns:
+                validation_errors.append("Missing 'SIS User ID' column")
+            if df['SIS User ID'].isnull().any():
+                validation_errors.append("Null values found in 'SIS User ID' column")
+            if df['SIS User ID'].duplicated().any():
+                validation_errors.append("Duplicate 'SIS User ID' values found")
+            numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
+            for col in numeric_cols:
+                if df[col].lt(0).any() or df[col].gt(100).any():
+                    validation_errors.append(f"Invalid scores in column '{col}': values must be between 0 and 100")
+                if df[col].isnull().any():
+                    validation_errors.append(f"Null values found in numeric column '{col}'")
+                    
+        elif file_type == "assignments":
+            if df.iloc[:, 0].isnull().any():
+                validation_errors.append("Null values found in first column (expected outcomes)")
+            if df.iloc[:, 0].duplicated().any():
+                validation_errors.append("Duplicate outcomes found in first column")
+                
+        if validation_errors:
+            log_container.error(f"Validation failed for {file.name}: {', '.join(validation_errors)}")
+            return False
+        log_container.success(f"Validation passed for {file.name}")
+        return True
+    except Exception as e:
+        log_container.error(f"Error validating {file.name}: {e}")
+        return False
+
+def parallel_process_course(course, config, excel_output_folder, log_container):
+    course_name = course.get('course_name')
+    semester = course.get('semester')
+    outcomes_file = course.get('outcomes_file')
+    if not course_name or not semester or not outcomes_file:
+        log_container.warning(f"Skipping course due to missing info: {course}")
+        return []
+    outcomes = read_outcomes(outcomes_file)
+    if not outcomes:
+        log_container.warning(f"No outcomes found for course {course_name}, skipping.")
+        return []
+    log_container.info(f"Processing course: {course_name}")
+    log_container.write(f"Outcomes: {outcomes}")
+    
+    results = []
+    def process_section(section_data):
+        section = section_data.get('section')
+        if not section:
+            log_container.warning("Skipping section with missing section name.")
+            return None
+        log_container.info(f"Section: {section}")
+        assignments_mapping = read_assignments(section_data.get('assignments_file', ''), outcomes)
+        log_container.write(f"Assignments Mappings: {assignments_mapping}")
+        final_outcomes = {outcome: assignments_mapping.get(outcome, []) for outcome in outcomes}
+        log_container.write(f"Final Outcomes: {final_outcomes}")
+        required_columns = set(assignment for criteria in final_outcomes.values() for assignment in criteria)
+        grades_file = section_data.get('grades_file')
+        if not grades_file:
+            log_container.warning(f"Grades file missing for section {section} of course {course_name}, skipping.")
+            return None
+        student_data = read_grades(grades_file, required_columns=required_columns)
+        if not student_data:
+            log_container.warning(f"No student data found for section {section} of course {course_name}, skipping.")
+            return None
+        log_container.write(f"Student Data: {student_data}")
+        try:
+            acat = ACAT(course_name, semester, section, final_outcomes, student_data)
+            student_outcomes = acat.compute_course_outcomes()
+            acat.summarize_course_outcomes(student_outcomes)
+            excel_output = os.path.join(excel_output_folder, f"{course_name}_{semester}_{section}_outcomes.xlsx")
+            db_output = os.path.join(config.get('output', {}).get('database_folder', 'db'), f"{course_name}_{semester}_{section}_outcomes.db")
+            os.makedirs(os.path.dirname(db_output), exist_ok=True)
+            acat.save_to_excel(student_outcomes, excel_output)
+            acat.save_to_sqlite(db_output, student_outcomes)
+            po_output_file = compute_program_outcomes(config, course_name, semester, section, excel_output, excel_output_folder)
+            if po_output_file:
+                io_output_file = compute_institutional_outcomes(config, course_name, semester, section, po_output_file, excel_output_folder)
+                if io_output_file:
+                    compute_student_assessments(config, course_name, semester, section, excel_output, po_output_file, io_output_file, excel_output_folder)
+            log_container.success(f"Processed {course_name} {semester} {section}")
+            return excel_output
+        except Exception as e:
+            log_container.error(f"Error processing {course_name} section {section}: {e}")
+            return None
+    
+    with ThreadPoolExecutor() as executor:
+        future_to_section = {executor.submit(process_section, section_data): section_data for section_data in course.get('sections', [])}
+        for future in as_completed(future_to_section):
+            result = future.result()
+            if result:
+                results.append(result)
+    
+    return results
+
 def streamlit_app():
     st.title("Program and Institutional Outcomes Assessment System")
     with st.container():
         st.subheader("Upload Configuration and Input Files")
         config_file = st.file_uploader("Upload acat_config.json", type=["json"])
         uploaded_files = st.file_uploader("Upload Excel Files (outcomes, assignments, grades)", type=["xlsx"], accept_multiple_files=True)
-        st.subheader("Processing Log")
+        st.subheader("Validation and Processing Log")
         log_container = st.container()
-        if st.button("Process Files"):
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            validate_button = st.button("Validate Files")
+        with col2:
+            process_button = st.button("Process Files")
+        
+        if validate_button:
+            if config_file and uploaded_files:
+                with st.spinner("Validating files..."):
+                    config_path = "temp_config.json"
+                    with open(config_path, "wb") as f:
+                        f.write(config_file.getvalue())
+                    config = load_config(config_path)
+                    if not config or 'courses' not in config:
+                        log_container.error("Invalid or empty configuration file.")
+                        return
+                    all_valid = True
+                    for file in uploaded_files:
+                        file_type = "outcomes" if "outcomes" in file.name.lower() else "grades" if "grades" in file.name.lower() else "assignments"
+                        if not validate_excel_file(file, file_type, log_container):
+                            all_valid = False
+                    if all_valid:
+                        log_container.success("All files passed validation. Ready to process.")
+            else:
+                log_container.error("Please upload both config file and Excel files for validation.")
+        
+        if process_button:
             if config_file and uploaded_files:
                 with st.spinner("Processing files..."):
                     config_path = "temp_config.json"
@@ -402,73 +621,51 @@ def streamlit_app():
                         return
                     excel_output_folder = config.get('output', {}).get('excel_folder', 'output')
                     os.makedirs(excel_output_folder, exist_ok=True)
-                    for course in config['courses']:
-                        course_name = course.get('course_name')
-                        semester = course.get('semester')
-                        outcomes_file = course.get('outcomes_file')
-                        if not course_name or not semester or not outcomes_file:
-                            log_container.warning(f"Skipping course due to missing info: {course}")
-                            continue
-                        outcomes = read_outcomes(outcomes_file)
-                        if not outcomes:
-                            log_container.warning(f"No outcomes found for course {course_name}, skipping.")
-                            continue
-                        log_container.info(f"Processing course: {course_name}")
-                        log_container.write(f"Outcomes: {outcomes}")
-                        for section_data in course.get('sections', []):
-                            section = section_data.get('section')
-                            if not section:
-                                log_container.warning("Skipping section with missing section name.")
-                                continue
-                            log_container.info(f"Section: {section}")
-                            assignments_mapping = read_assignments(section_data.get('assignments_file', ''), outcomes)
-                            log_container.write(f"Assignments Mappings: {assignments_mapping}")
-                            final_outcomes = {outcome: assignments_mapping.get(outcome, []) for outcome in outcomes}
-                            log_container.write(f"Final Outcomes: {final_outcomes}")
-                            required_columns = set(assignment for criteria in final_outcomes.values() for assignment in criteria)
-                            grades_file = section_data.get('grades_file')
-                            if not grades_file:
-                                log_container.warning(f"Grades file missing for section {section} of course {course_name}, skipping.")
-                                continue
-                            student_data = read_grades(grades_file, required_columns=required_columns)
-                            if not student_data:
-                                log_container.warning(f"No student data found for section {section} of course {course_name}, skipping.")
-                                continue
-                            log_container.write(f"Student Data: {student_data}")
-                            try:
-                                acat = ACAT(course_name, semester, section, final_outcomes, student_data)
-                                student_outcomes = acat.compute_course_outcomes()
-                                acat.summarize_course_outcomes(student_outcomes)
-                                excel_output = os.path.join(excel_output_folder, f"{course_name}_{semester}_{section}_outcomes.xlsx")
-                                db_output = os.path.join(config.get('output', {}).get('database_folder', 'db'), f"{course_name}_{semester}_{section}_outcomes.db")
-                                os.makedirs(os.path.dirname(db_output), exist_ok=True)
-                                acat.save_to_excel(student_outcomes, excel_output)
-                                acat.save_to_sqlite(db_output, student_outcomes)
-                                po_output_file = compute_program_outcomes(config, course_name, semester, section, excel_output, excel_output_folder)
-                                if po_output_file:
-                                    io_output_file = compute_institutional_outcomes(config, course_name, semester, section, po_output_file, excel_output_folder)
-                                    if io_output_file:
-                                        compute_student_assessments(config, course_name, semester, section, excel_output, po_output_file, io_output_file, excel_output_folder)
-                                log_container.success(f"Processed {course_name} {semester} {section}")
-                            except Exception as e:
-                                log_container.error(f"Error processing {course_name} section {section}: {e}")
+                    
+                    with ThreadPoolExecutor() as executor:
+                        future_to_course = {executor.submit(parallel_process_course, course, config, excel_output_folder, log_container): course for course in config['courses']}
+                        for future in as_completed(future_to_course):
+                            future.result()
             else:
                 log_container.error("Please upload both config file and Excel files.")
+    
     output_folder = config.get('output', {}).get('excel_folder', 'output') if 'config' in locals() else 'output'
     excel_files = glob.glob(os.path.join(output_folder, "*.xlsx"))
     if excel_files:
-        tabs = st.tabs(["Course Outcomes", "Program Outcomes", "Institutional Outcomes", "Student Assessments"])
-        courses = list(set(f.split('_')[0] for f in excel_files))
-        course_filter = st.selectbox("Select Course", ["All"] + courses, key="course_filter")
-        sections = list(set(f.split('_')[2].replace('_outcomes.xlsx', '').replace('_student_assessment.xlsx', '') for f in excel_files if course_filter == "All" or f.startswith(course_filter)))
-        section_filter = st.selectbox("Select Section", ["All"] + sections, key="section_filter")
+        st.subheader("Data Filters and Grouping")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            courses = list(set(f.split('_')[0] for f in excel_files))
+            course_filter = st.selectbox("Select Course", ["All"] + courses, key="course_filter")
+        with col2:
+            sections = list(set(f.split('_')[2].replace('_outcomes.xlsx', '').replace('_student_assessment.xlsx', '') for f in excel_files if course_filter == "All" or f.startswith(course_filter)))
+            section_filter = st.selectbox("Select Section", ["All"] + sections, key="section_filter")
+        with col3:
+            semesters = list(set(f.split('_')[1] for f in excel_files if course_filter == "All" or f.startswith(course_filter)))
+            semester_filter = st.selectbox("Select Semester", ["All"] + semesters, key="semester_filter")
+        with col4:
+            group_by = st.selectbox("Group By", ["Student", "Section", "Course"], key="group_by")
+        st.subheader("Outcome and Score Filters")
+        col5, col6 = st.columns(2)
+        with col5:
+            outcome_types = ["All"] + [col for file in excel_files for col in safe_read_excel(file).columns if col.startswith(('CO', 'PO', 'IO'))]
+            outcome_filter = st.selectbox("Select Outcome", outcome_types, key="outcome_filter")
+        with col6:
+            score_range = st.slider("Score Range", min_value=0.0, max_value=100.0, value=(0.0, 100.0), step=1.0)
+        tabs = st.tabs(["Course Outcomes", "Program Outcomes", "Institutional Outcomes", "Student Assessments", "Comparisons"])
         for i, tab_name in enumerate(["co", "po", "io", "student_assessment"]):
             with tabs[i]:
-                filtered_files = [f for f in excel_files if tab_name in f.lower() and (course_filter == "All" or f.startswith(course_filter)) and (section_filter == "All" or section_filter in f)]
+                filtered_files = [f for f in excel_files if tab_name in f.lower() and (course_filter == "All" or f.startswith(course_filter)) and (section_filter == "All" or section_filter in f) and (semester_filter == "All" or semester_filter in f)]
                 if filtered_files:
                     for file in filtered_files:
                         df = safe_read_excel(file)
                         if df is not None:
+                            if score_range != (0.0, 100.0):
+                                numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
+                                for col in numeric_cols:
+                                    df = df[(df[col] >= score_range[0]) & (df[col] <= score_range[1])]
+                            if outcome_filter != "All" and outcome_filter in df.columns:
+                                df = df[['SIS User ID', outcome_filter]]
                             st.subheader(f"Data from {os.path.basename(file)}")
                             st.dataframe(df)
                             if tab_name != "student_assessment":
@@ -491,6 +688,14 @@ def streamlit_app():
                             )
                 else:
                     st.write("No data available for this tab.")
+        with tabs[4]:
+            st.subheader("Comparison Visualizations")
+            comparison_tabs = st.tabs(["CO Comparisons", "PO Comparisons", "IO Comparisons"])
+            for j, comp_tab_name in enumerate(["co", "po", "io"]):
+                with comparison_tabs[j]:
+                    filtered_files = [f for f in excel_files if comp_tab_name in f.lower() and (course_filter == "All" or f.startswith(course_filter)) and (section_filter == "All" or section_filter in f) and (semester_filter == "All" or semester_filter in f)]
+                    dfs = {f: safe_read_excel(f) for f in filtered_files if safe_read_excel(f) is not None}
+                    generate_comparison_charts(dfs, comp_tab_name, course_filter, section_filter, outcome_filter, score_range, group_by)
     else:
         st.write("No output files found. Please process files first.")
 
