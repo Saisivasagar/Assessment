@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chandu Shankula | Outcome Assessment System Portfolio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f8fa;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #004080;
+      color: white;
+      padding: 30px 40px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2.2em;
+    }
+    header p {
+      margin: 5px 0 0;
+      font-size: 1.1em;
+    }
+    main {
+      padding: 40px;
+      max-width: 1100px;
+      margin: auto;
+    }
+    h2 {
+      color: #004080;
+      border-bottom: 2px solid #004080;
+      padding-bottom: 5px;
+    }
+    h3 {
+      margin-top: 30px;
+      color: #003060;
+    }
+    p, li {
+      line-height: 1.7;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background-color: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #004080;
+      color: white;
+    }
+    a {
+      color: #0056b3;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    footer {
+      background-color: #f0f0f0;
+      padding: 20px 40px;
+      text-align: center;
+      font-size: 0.9em;
+      margin-top: 60px;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      margin: 20px 0;
+      border: 1px solid #ccc;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Chandu Shankula</h1>
+    <p>Professional Seminar Portfolio | Professor. John Glossner</p>
+  </header>
+
+  <main>
+
+    <h2>Project: Program and Institutional Outcomes Assessment System</h2>
+
+    <p>
+      This project delivers an automated system to evaluate academic performance across course, program, and institutional levels using structured input files, outcome mappings, and AI-generated insights. I contributed to every major phase of this system: from backend data processing and validation to frontend GUI and CrewAI-based assessment agents. The outcome is a deployable, scalable tool that can help academic institutions generate actionable reports for accreditation and curriculum analysis.
+    </p>
+
+    <h3>Direct Contribution Highlights</h3>
+    <ul>
+      <li>Built the config and input validation module to handle JSON and Excel formats with edge case error handling.</li>
+      <li>Designed the logic to compute Program Outcomes (POs) from Course Outcomes (COs) using mapping specifications.</li>
+      <li>Developed four CrewAI assessment agents to provide insights across CO, PO, IO, and individual student metrics.</li>
+      <li>Engineered the Panel GUI for file uploads, visualization, filtering, and Excel downloads using Plotly and Panel.</li>
+      <li>Implemented extensive testing using Pytest, ensuring system integrity and GUI responsiveness.</li>
+      <li>Completed deployment and authored user and developer documentation for seamless adoption.</li>
+    </ul>
+
+    <h3>GitHub Issue</h3>
+    <p>
+      I worked on the user story <strong>US1: Program and Institutional Outcomes Assessment System with Student Analysis</strong>.  
+      <a href="https://github.com/Rivier-Computer-Science/Assessment/issues/49" target="_blank">View on GitHub Issue #49</a>
+    </p>
+
+    <h3>Code Repository</h3>
+    <p>
+      <a href="https://github.com/Rivier-Computer-Science/Assessment/blob/main/src/ACAT/run_acat.py" target="_blank">Main code contributed (run_acat.py)</a>
+    </p>
+
+    <h2>Sprint Contributions Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Sprint</th>
+          <th>Task</th>
+          <th>My Hours</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Sprint 1</td>
+          <td>Update File Input and Validation</td>
+          <td>9</td>
+          <td>Completed</td>
+        </tr>
+        <tr>
+          <td>Sprint 2</td>
+          <td>Compute Program Outcomes</td>
+          <td>11</td>
+          <td>Completed</td>
+        </tr>
+        <tr>
+          <td>Sprint 3</td>
+          <td>Build CrewAI Student Assessment Module</td>
+          <td>13</td>
+          <td>Completed</td>
+        </tr>
+        <tr>
+          <td>Sprint 3</td>
+          <td>Develop Panel GUI</td>
+          <td>18</td>
+          <td>Completed</td>
+        </tr>
+        <tr>
+          <td>Sprint 3</td>
+          <td>Test and Validate with Pytest</td>
+          <td>14</td>
+          <td>Completed</td>
+        </tr>
+        <tr>
+          <td>Sprint 4</td>
+          <td>Document and Deploy</td>
+          <td>8</td>
+          <td>Completed</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Sprint Narratives</h3>
+    <p><strong>Sprint 1:</strong> I focused on the foundation—creating a robust input validation system for Excel and JSON files. The system checks for formatting errors, missing fields, and logical inconsistencies, preventing crashes and ensuring clean data for assessment.</p>
+    
+    <p><strong>Sprint 2:</strong> I implemented logic to map Course Outcomes (COs) to Program Outcomes (POs), enabling higher-level analytics from detailed student-level data. This phase involved understanding mapping matrices and translating them into Python functions for weighted calculations.</p>
+    
+    <p><strong>Sprint 3:</strong> This was the most intense sprint. I developed the CrewAI assessment agents to analyze and generate insights across COs, POs, IOs, and individual students. I also engineered the Panel-based GUI for file uploads, Plotly visualizations, filters, and Excel export functionality. Alongside that, I wrote and ran Pytest scripts to validate logic and GUI components.</p>
+    
+    <p><strong>Sprint 4:</strong> I wrapped up the project with clear developer documentation, deployment scripts, and final end-to-end testing. I ensured the project could be run on new systems without errors and included helpful messages to guide new users.</p>
+
+    <h2>Commit & Pull Request History</h2>
+    <p>
+      All contributions including code, bug fixes, and enhancements are documented in pull requests and commits:
+      <a href="https://github.com/Rivier-Computer-Science/Assessment/pulls?q=is%3Apr+author%3AShankulachandu+is%3Aclosed" target="_blank">
+        View my GitHub Pull Requests
+      </a>
+    </p>
+
+    <h2>System Features</h2>
+    <ul>
+      <li><strong>Multi-level Outcome Assessment:</strong> Converts course-level data into program and institutional level analytics using JSON-driven logic.</li>
+      <li><strong>GUI Interface:</strong> Built using Panel and Plotly for interactive filtering, visualization, and downloading Excel summaries.</li>
+      <li><strong>CrewAI:</strong> Four agents generate qualitative insights across students and outcomes, aiding academic evaluation.</li>
+      <li><strong>Automated Testing:</strong> Includes unit and functional tests using Pytest to verify system accuracy and reliability.</li>
+      <li><strong>Deployment Ready:</strong> Validated installation in clean environments with comprehensive documentation and error handling.</li>
+    </ul>
+
+    <h2>Screenshots</h2>
+    <img src="img4.jpg" alt="Screenshot 1 - Config Validation">
+    <img src="img5.jpg" alt="Screenshot 2 - Program Outcome Logic">
+    <img src="img6.jpg" alt="Screenshot 3 - GUI Interface with CrewAI">
+
+  </main>
+
+  <footer>
+    &copy; 2025 Chandu Shankula | Portfolio for Professional Seminar | Rivier University
+  </footer>
+
+</body>
+</html>
